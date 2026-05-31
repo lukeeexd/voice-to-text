@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using VoiceToText.Audio;
 using VoiceToText.Hotkeys;
 using VoiceToText.Injection;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
+using VoiceToText.Update;
 
 namespace VoiceToText.App;
 
@@ -20,14 +22,25 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly ITextInjector _injector = new ClipboardTextInjector();
     private readonly AppSettings _settings;
 
+    private readonly UpdateService _updates;
+    private readonly string? _postUpdateTarget;
+
     private ISttEngine _stt;
     private AppState _state = AppState.Idle;
     private bool _busy;
+    private int _updateInProgress; // 0/1, set/cleared via Interlocked
 
-    public TrayApplicationContext()
+    public TrayApplicationContext(string? postUpdateTarget = null)
     {
+        _postUpdateTarget = postUpdateTarget;
         _settings = AppSettings.Load();
         _stt = new WhisperSttEngine(_settings.ModelType, _settings.Language);
+        _updates = new UpdateService(_settings);
+
+        // Clean leftover staged-update files on a normal start. On a post-update launch
+        // the shim is still finishing, so skip it then to avoid deleting files in use.
+        if (postUpdateTarget is null)
+            UpdateService.CleanStaging();
 
         _window = new HiddenWindow();
         _window.EnsureHandle();
@@ -48,6 +61,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _audio.SilenceDetected += OnSilenceDetected;
 
         _ = Task.Run(WarmUpAsync);
+
+        if (_postUpdateTarget is not null)
+            _window.BeginInvoke(ShowPostUpdateBalloon);
+        else
+            _ = Task.Run(() => CheckForUpdatesAsync(userInitiated: false));
     }
 
     // Fires on the capture thread when auto-stop detects a pause; marshal to the
@@ -67,6 +85,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add("Settings…", null, (_, _) => ShowSettings());
+        menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdatesAsync(userInitiated: true));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
         return menu;
@@ -210,6 +229,159 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 $"{rejected.Describe()} is reserved or already in use. Kept {previousHotkey.Describe()}.",
                 ToolTipIcon.Warning);
         }
+    }
+
+    private async Task CheckForUpdatesAsync(bool userInitiated)
+    {
+        try
+        {
+            var result = await _updates.CheckAsync().ConfigureAwait(false);
+            if (!_window.IsHandleCreated)
+                return;
+            _window.BeginInvoke(() => HandleUpdateResult(result, userInitiated));
+        }
+        catch
+        {
+            // A background update check must never crash the tray.
+        }
+    }
+
+    private void HandleUpdateResult(UpdateCheckResult result, bool userInitiated)
+    {
+        switch (result.Decision)
+        {
+            case UpdateDecision.UpdateAvailable:
+                // Don't nag at startup about a version the user already declined.
+                if (!userInitiated && result.AvailableVersion?.ToString() == _settings.UpdateSkippedVersion)
+                    return;
+                if (userInitiated)
+                    PromptInstall(result);
+                else
+                    _trayIcon.ShowBalloonTip(8000, "Voice to Text",
+                        $"Update v{result.AvailableVersion} is available — tray menu → \"Check for updates\" to install.",
+                        ToolTipIcon.Info);
+                break;
+            case UpdateDecision.UpToDate:
+                if (userInitiated)
+                    _trayIcon.ShowBalloonTip(4000, "Voice to Text", $"You're on the latest version (v{result.CurrentVersion}).", ToolTipIcon.Info);
+                break;
+            case UpdateDecision.NoFeedConfigured:
+                if (userInitiated)
+                    _trayIcon.ShowBalloonTip(6000, "Voice to Text", "Set an update folder in Settings first.", ToolTipIcon.Info);
+                break;
+            case UpdateDecision.Disabled:
+                if (userInitiated)
+                    _trayIcon.ShowBalloonTip(6000, "Voice to Text", "Automatic updates are off — enable them in Settings.", ToolTipIcon.Info);
+                break;
+            case UpdateDecision.VersionUnknown:
+                if (userInitiated)
+                    ShowError("Couldn't determine the running version, so updates are disabled for this build.");
+                break;
+            default: // ManifestInvalid
+                if (userInitiated)
+                    ShowError(result.Message ?? "Couldn't check for updates.");
+                break;
+        }
+    }
+
+    private void PromptInstall(UpdateCheckResult result)
+    {
+        var notes = string.IsNullOrWhiteSpace(result.Message) ? "" : $"\n\n{result.Message}";
+        var choice = MessageBox.Show(
+            $"Version {result.AvailableVersion} is available (you have {result.CurrentVersion}).\n\n" +
+            $"Install now? The app will close briefly and reopen.{notes}\n\n(Choose No to skip this version.)",
+            "Voice to Text — Update available",
+            MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+        if (choice == DialogResult.Yes)
+        {
+            _ = DownloadAndApplyAsync(result.Manifest!, result.AvailableVersion!);
+        }
+        else
+        {
+            _settings.UpdateSkippedVersion = result.AvailableVersion!.ToString();
+            _settings.Save();
+        }
+    }
+
+    private async Task DownloadAndApplyAsync(UpdateManifest manifest, Version targetVersion)
+    {
+        if (Interlocked.CompareExchange(ref _updateInProgress, 1, 0) != 0)
+            return; // an apply is already in flight
+
+        try
+        {
+            if (_window.IsHandleCreated)
+                _window.BeginInvoke(() => _trayIcon.ShowBalloonTip(4000, "Voice to Text", "Downloading update…", ToolTipIcon.Info));
+
+            var setupPath = await _updates.StageInstallerAsync(manifest).ConfigureAwait(false);
+
+            if (!_window.IsHandleCreated)
+            {
+                Interlocked.Exchange(ref _updateInProgress, 0);
+                return;
+            }
+            _window.BeginInvoke(() => ApplyUpdate(setupPath, targetVersion));
+            // Leave the guard set: the process is about to exit and relaunch.
+        }
+        catch (Exception ex)
+        {
+            Interlocked.Exchange(ref _updateInProgress, 0);
+            if (_window.IsHandleCreated)
+                _window.BeginInvoke(() => ShowError($"Update failed: {ex.Message}"));
+        }
+    }
+
+    // UI thread: release native/file locks, launch the relauncher shim, and exit so the
+    // installer can replace files. The shim relaunches the app afterwards.
+    private void ApplyUpdate(string setupPath, Version targetVersion)
+    {
+        var appExe = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(appExe))
+        {
+            ShowError("Couldn't locate the app executable to relaunch after the update.");
+            Interlocked.Exchange(ref _updateInProgress, 0);
+            return;
+        }
+
+        string shim;
+        try
+        {
+            shim = _updates.WriteRelauncherShim();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Update failed: {ex.Message}");
+            Interlocked.Exchange(ref _updateInProgress, 0);
+            return;
+        }
+
+        // Release the hotkey and the Whisper native DLLs (in runtimes\) so the installer
+        // can overwrite them; Inno's Restart Manager + AppMutex close any straggler.
+        try { _hotkeys.Unregister(); } catch { /* best effort */ }
+        try { _stt.Dispose(); } catch { /* best effort */ }
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = $"/c \"\"{shim}\" {Environment.ProcessId} \"{setupPath}\" \"{appExe}\" \"{UpdateService.UpdateLogPath}\" {targetVersion}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        Process.Start(psi);
+
+        ExitApp();
+    }
+
+    private void ShowPostUpdateBalloon()
+    {
+        var current = _updates.CurrentVersion;
+        if (Version.TryParse(_postUpdateTarget, out var target) && current is not null && current >= target)
+            _trayIcon.ShowBalloonTip(5000, "Voice to Text", $"Updated to v{current}.", ToolTipIcon.Info);
+        else
+            _trayIcon.ShowBalloonTip(9000, "Voice to Text",
+                $"The update may not have completed (running v{current?.ToString() ?? "?"}). See {UpdateService.UpdateLogPath}.",
+                ToolTipIcon.Warning);
     }
 
     private void ShowError(string message)

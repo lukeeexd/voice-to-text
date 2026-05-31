@@ -6,9 +6,9 @@ namespace VoiceToText;
 internal static class Program
 {
     /// <summary>
-    /// Entry point. Normally launches the tray application. If started with
-    /// "--selftest &lt;wav&gt; [outFile]" it runs a one-shot transcription so the
-    /// Whisper + GPU pipeline can be verified without a microphone.
+    /// Entry point. Diagnostics ("--selftest", "--vadtest", "--updatecheck") run headless
+    /// and exit. Otherwise launches the tray app as a single instance. "--postupdate &lt;ver&gt;"
+    /// is passed by the update relauncher so the app can confirm the upgrade.
     /// </summary>
     [STAThread]
     private static int Main(string[] args)
@@ -22,13 +22,24 @@ internal static class Program
         }
 
         if (args.Length > 0 && args[0].Equals("--vadtest", StringComparison.OrdinalIgnoreCase))
-        {
-            var outFile = args.Length > 1 ? args[1] : "vadtest-output.txt";
-            return SelfTest.RunVadTest(outFile);
-        }
+            return SelfTest.RunVadTest(args.Length > 1 ? args[1] : "vadtest-output.txt");
+
+        if (args.Length > 0 && args[0].Equals("--updatecheck", StringComparison.OrdinalIgnoreCase))
+            return SelfTest.RunUpdateCheck("updatecheck-output.txt", args.Length > 1 ? args[1] : null);
+
+        // Single-instance guard. The name matches the installer's AppMutex so Inno's
+        // Restart Manager reliably closes this instance during an update, and so the
+        // post-update relaunch / start-on-login can't spawn a second tray icon.
+        using var mutex = new Mutex(initiallyOwned: true, "VoiceToText_SingleInstance_Mutex", out var isNewInstance);
+        if (!isNewInstance)
+            return 0;
+
+        string? postUpdateTarget = null;
+        if (args.Length > 0 && args[0].Equals("--postupdate", StringComparison.OrdinalIgnoreCase))
+            postUpdateTarget = args.Length > 1 ? args[1] : "";
 
         ApplicationConfiguration.Initialize();
-        using var context = new TrayApplicationContext();
+        using var context = new TrayApplicationContext(postUpdateTarget);
         Application.Run(context);
         return 0;
     }

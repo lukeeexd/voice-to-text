@@ -23,6 +23,18 @@ public sealed class AppSettings
     /// <summary>Seconds of silence (after speech) before auto-stopping.</summary>
     public double AutoStopSilenceSeconds { get; set; } = 1.5;
 
+    /// <summary>Folder (local or UNC) holding latest.json + the setup exe. Empty = no feed.</summary>
+    public string UpdateFeedFolder { get; set; } = "";
+
+    /// <summary>Check for updates on startup and via the tray menu. Off by default (runs an installer).</summary>
+    public bool AutoUpdateEnabled { get; set; } = false;
+
+    /// <summary>Whether the user accepted the "this runs an installer from that folder" warning.</summary>
+    public bool UpdateConsentAccepted { get; set; }
+
+    /// <summary>A version the user declined; suppresses the automatic startup nag for it.</summary>
+    public string UpdateSkippedVersion { get; set; } = "";
+
     public GgmlType ModelType { get; set; } = GgmlType.LargeV3Turbo;
 
     [JsonIgnore]

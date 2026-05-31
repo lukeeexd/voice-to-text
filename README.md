@@ -42,9 +42,10 @@ On first launch the `large-v3-turbo` model (~1.6 GB) is downloaded once to
   also press the hotkey again to stop immediately. The transcription is then
   pasted at your cursor.
 - Double-click the tray icon (or right-click → Settings) to pick a microphone,
-  change the hotkey, and toggle **start on login**.
+  change the hotkey, toggle **start on login**, and enable **auto-update**.
 - The hotkey can be a single key (e.g. an extra/macro key or `F13`) or a
   modifier combo. Esc/Tab/Enter stay reserved for the dialog.
+- Tray menu → **Check for updates…** checks the configured update folder now.
 
 ### Verify the engine (no mic needed)
 
@@ -89,6 +90,45 @@ iscc installer\VoiceToText.iss      # 2. compile -> installer\Output\VoiceToText
 
 If you don't have Inno Setup, its compiler ships in the `Tools.InnoSetup`
 NuGet package (no install required) — see the `ISCC.exe` inside that package.
+The installer version is read automatically from the published exe, so just bump
+`<Version>` in the csproj.
+
+## Auto-update
+
+The app can update itself from a **folder you designate** (a local path or a
+network/shared drive) — no server, nothing published online. Enable it in
+Settings (off by default) and pick the folder. On startup and via tray →
+**Check for updates…**, the app reads `latest.json` from that folder; if it names
+a newer version it offers to install it, copies the setup locally (verifying
+SHA-256 if provided), and a small relauncher runs the installer and reopens the
+app. Your settings and model in `%APPDATA%\VoiceToText` are untouched.
+
+> ⚠️ The app runs the installer it finds in that folder, so only use a folder you
+> control and trust. The installer isn't code-signed yet (see roadmap), so the
+> feature is off by default and shows a one-time consent prompt when enabled.
+
+### Publishing an update to the feed
+
+```powershell
+# bump <Version> in src\VoiceToText\VoiceToText.csproj, then:
+.\publish.ps1
+iscc installer\VoiceToText.iss
+# copy the setup into your feed folder and write the manifest:
+Copy-Item installer\Output\VoiceToText-Setup.exe <feed>\VoiceToText-Setup-<ver>.exe
+```
+
+`<feed>\latest.json`:
+
+```json
+{
+  "Version": "0.3.0",
+  "SetupFileName": "VoiceToText-Setup-0.3.0.exe",
+  "Sha256": "<sha256 of the setup exe>",
+  "ReleaseNotes": "What changed"
+}
+```
+
+(`SetupFileName` must be a plain file name living in the feed folder.)
 
 ## Known limitations
 
@@ -105,4 +145,6 @@ NuGet package (no install required) — see the `ISCC.exe` inside that package.
 - Hold-to-talk mode
 - Live/streaming partial results
 - Model picker + downloader UI
+- Code-sign the installer + verify Authenticode/publisher in the updater (so
+  auto-update trusts the binary, not just a same-folder hash)
 - Post-processing (punctuation/formatting, custom vocabulary, voice commands)

@@ -3,9 +3,11 @@
 ; Build:  iscc installer\VoiceToText.iss   (after running publish.ps1)
 
 #define MyAppName "Voice to Text"
-#define MyAppVersion "0.1.0"
 #define MyAppPublisher "Luke Madigan"
 #define MyAppExeName "VoiceToText.exe"
+; Pull the version straight from the published exe so the installer and the app
+; can never drift out of sync (publish.ps1 must run before iscc).
+#define MyAppVersion GetVersionNumbersString("..\publish\" + MyAppExeName)
 
 [Setup]
 AppId={{B7E1C3A2-5F4D-4E8B-9C2A-1D6F3A8B4E20}
@@ -22,8 +24,11 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-; Use Restart Manager to close a running instance before updating files.
+; Use Restart Manager to close a running instance before updating files. AppMutex
+; (matching the app's single-instance mutex) makes that detection reliable so the
+; auto-updater can replace the exe + runtimes\*.dll the running app holds open.
 CloseApplications=yes
+AppMutex=VoiceToText_SingleInstance_Mutex
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; Flags: unchecked

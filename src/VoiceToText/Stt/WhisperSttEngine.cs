@@ -49,5 +49,9 @@ public sealed class WhisperSttEngine : ISttEngine
         return sb.ToString().Trim();
     }
 
-    public void Dispose() => _factory?.Dispose();
+    public void Dispose()
+    {
+        _factory?.Dispose();
+        _factory = null;
+    }
 }

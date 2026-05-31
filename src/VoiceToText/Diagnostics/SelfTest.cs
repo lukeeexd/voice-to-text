@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Text;
 using VoiceToText.Audio;
+using VoiceToText.Settings;
 using VoiceToText.Stt;
+using VoiceToText.Update;
 using Whisper.net;
 using Whisper.net.Ggml;
 
@@ -88,6 +90,93 @@ internal static class SelfTest
         }
 
         log.AppendLine(allPass ? "ALL VAD TESTS PASSED" : "SOME VAD TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
+
+    /// <summary>Checks the update decision logic (pure) and a simulated feed folder (I/O). No real install.</summary>
+    public static int RunUpdateCheck(string outputPath, string? feedFolder)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+
+        var cur = new Version(1, 0, 0, 0);
+        static UpdateManifest M(string? ver, string? setup = "VoiceToText-Setup.exe") => new() { Version = ver, SetupFileName = setup };
+
+        // --- Pure UpdateChecker.Decide cases ---
+        Pass("disabled", UpdateChecker.Decide(false, "x", cur, M("2.0.0")).Decision == UpdateDecision.Disabled);
+        Pass("version unknown", UpdateChecker.Decide(true, "x", null, M("2.0.0")).Decision == UpdateDecision.VersionUnknown);
+        Pass("no feed", UpdateChecker.Decide(true, "", cur, M("2.0.0")).Decision == UpdateDecision.NoFeedConfigured);
+        Pass("null manifest", UpdateChecker.Decide(true, "x", cur, null).Decision == UpdateDecision.ManifestInvalid);
+        Pass("empty version", UpdateChecker.Decide(true, "x", cur, M("")).Decision == UpdateDecision.ManifestInvalid);
+        Pass("rooted setup name", UpdateChecker.Decide(true, "x", cur, M("2.0.0", @"C:\evil.exe")).Decision == UpdateDecision.ManifestInvalid);
+        Pass("traversal setup name", UpdateChecker.Decide(true, "x", cur, M("2.0.0", @"..\x.exe")).Decision == UpdateDecision.ManifestInvalid);
+        Pass("subdir setup name", UpdateChecker.Decide(true, "x", cur, M("2.0.0", @"sub\x.exe")).Decision == UpdateDecision.ManifestInvalid);
+        Pass("equal => up to date", UpdateChecker.Decide(true, "x", cur, M("1.0.0")).Decision == UpdateDecision.UpToDate);
+        Pass("lower => up to date (no downgrade)", UpdateChecker.Decide(true, "x", cur, M("0.9.0")).Decision == UpdateDecision.UpToDate);
+        var numeric = UpdateChecker.Decide(true, "x", new Version(0, 9, 0, 0), M("0.10.0"));
+        Pass("0.10.0 > 0.9.0 (numeric, not string)", numeric.Decision == UpdateDecision.UpdateAvailable && numeric.AvailableVersion == new Version(0, 10, 0, 0));
+        Pass("unparseable version", UpdateChecker.Decide(true, "x", cur, M("not-a-version")).Decision == UpdateDecision.ManifestInvalid);
+        var higher = UpdateChecker.Decide(true, "x", cur, M("1.0.1"));
+        Pass("higher => update available", higher.Decision == UpdateDecision.UpdateAvailable && higher.AvailableVersion == new Version(1, 0, 1, 0));
+
+        // --- VersionParsing ---
+        Pass("normalize 1.2", VersionParsing.TryNormalize("1.2") == new Version(1, 2, 0, 0));
+        Pass("normalize 1.2.3", VersionParsing.TryNormalize("1.2.3") == new Version(1, 2, 3, 0));
+        Pass("normalize 1.2.3.4", VersionParsing.TryNormalize("1.2.3.4") == new Version(1, 2, 3, 4));
+        Pass("normalize 1.2.3+sha", VersionParsing.TryNormalize("1.2.3+abc123") == new Version(1, 2, 3, 0));
+        Pass("normalize 1.2.3-beta", VersionParsing.TryNormalize("1.2.3-beta") == new Version(1, 2, 3, 0));
+        Pass("normalize garbage => null", VersionParsing.TryNormalize("x.y") is null);
+
+        // --- Simulated feed folder (real I/O) ---
+        try
+        {
+            var feed = feedFolder ?? Path.Combine(Path.GetTempPath(), "vtt-updatetest-feed");
+            Directory.CreateDirectory(feed);
+            var svc = new UpdateService(new AppSettings { AutoUpdateEnabled = true, UpdateFeedFolder = feed });
+            var running = svc.CurrentVersion ?? new Version(0, 0, 0, 0);
+            var newer = new Version(running.Major, running.Minor + 1, 0, 0);
+
+            const string setupName = "VoiceToText-Setup.exe";
+            var setupPath = Path.Combine(feed, setupName);
+            File.WriteAllText(setupPath, "dummy-installer-bytes");
+            var sha = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(setupPath))).ToLowerInvariant();
+            File.WriteAllText(Path.Combine(feed, UpdateManifest.ManifestFileName),
+                $"{{\"Version\":\"{newer}\",\"SetupFileName\":\"{setupName}\",\"Sha256\":\"{sha}\"}}");
+
+            var check = svc.CheckAsync().GetAwaiter().GetResult();
+            Pass("feed: update available", check.Decision == UpdateDecision.UpdateAvailable && check.AvailableVersion == newer, check.Decision.ToString());
+
+            var staged = svc.StageInstallerAsync(check.Manifest!).GetAwaiter().GetResult();
+            Pass("feed: setup staged + SHA ok", File.Exists(staged));
+
+            File.WriteAllText(Path.Combine(feed, UpdateManifest.ManifestFileName),
+                $"{{\"Version\":\"{newer}\",\"SetupFileName\":\"{setupName}\",\"Sha256\":\"deadbeef\"}}");
+            var tampered = svc.CheckAsync().GetAwaiter().GetResult();
+            var refused = false;
+            try { svc.StageInstallerAsync(tampered.Manifest!).GetAwaiter().GetResult(); }
+            catch (InvalidOperationException) { refused = true; }
+            Pass("feed: SHA mismatch refused", refused);
+
+            var missing = new UpdateService(new AppSettings { AutoUpdateEnabled = true, UpdateFeedFolder = Path.Combine(Path.GetTempPath(), "vtt-nonexistent-zzz") });
+            Pass("feed: missing folder => ManifestInvalid (no throw)", missing.CheckAsync().GetAwaiter().GetResult().Decision == UpdateDecision.ManifestInvalid);
+
+            try { Directory.Delete(feed, true); } catch { /* best effort */ }
+            UpdateService.CleanStaging();
+        }
+        catch (Exception ex)
+        {
+            Pass("feed simulation ran without throwing", false, ex.Message);
+        }
+
+        log.AppendLine(allPass ? "ALL UPDATE-CHECK TESTS PASSED" : "SOME UPDATE-CHECK TESTS FAILED");
         var result = log.ToString();
         File.WriteAllText(outputPath, result);
         Console.WriteLine(result);

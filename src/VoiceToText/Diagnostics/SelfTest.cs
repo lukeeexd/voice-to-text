@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using VoiceToText.Audio;
 using VoiceToText.Stt;
 using Whisper.net;
 using Whisper.net.Ggml;
@@ -27,6 +28,70 @@ internal static class SelfTest
             File.WriteAllText(outputPath, "ERROR: " + ex);
             return 1;
         }
+    }
+
+    /// <summary>Deterministic check of the auto-stop (silence) logic, no mic needed.</summary>
+    public static int RunVadTest(string outputPath)
+    {
+        const double chunk = 0.02; // 20 ms chunks
+        const double quiet = 0.002, speech = 0.05;
+        var log = new StringBuilder();
+        var allPass = true;
+
+        void Pass(string name, bool ok, string detail)
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}: {detail}");
+        }
+
+        // 1) Fires ~1.0 s after speech ends.
+        {
+            var d = new SilenceDetector(1.0);
+            for (var t = 0.0; t < 0.30; t += chunk) d.Process(quiet, chunk);   // calibrate
+            for (var t = 0.0; t < 0.60; t += chunk) d.Process(speech, chunk);  // speech
+            var elapsed = 0.0; var fired = false;
+            for (var i = 0; i < 500; i++) { elapsed += chunk; if (d.Process(quiet, chunk)) { fired = true; break; } }
+            Pass("fires after sustained silence", fired && elapsed is >= 0.9 and <= 1.2, $"fired={fired}, elapsed={elapsed:F2}s (expected ~1.0)");
+        }
+
+        // 2) Never fires if no speech occurred.
+        {
+            var d = new SilenceDetector(0.5);
+            var fired = false;
+            for (var i = 0; i < 500; i++) if (d.Process(quiet, chunk)) { fired = true; break; }
+            Pass("no speech -> no auto-stop", !fired, $"fired={fired}");
+        }
+
+        // 3) Fires exactly once.
+        {
+            var d = new SilenceDetector(0.3);
+            for (var t = 0.0; t < 0.30; t += chunk) d.Process(quiet, chunk);
+            for (var t = 0.0; t < 0.20; t += chunk) d.Process(speech, chunk);
+            var count = 0;
+            for (var i = 0; i < 200; i++) if (d.Process(quiet, chunk)) count++;
+            Pass("fires exactly once", count == 1, $"count={count}");
+        }
+
+        // 4) Resumed speech resets the silence timer.
+        {
+            var d = new SilenceDetector(1.0);
+            for (var t = 0.0; t < 0.30; t += chunk) d.Process(quiet, chunk);
+            for (var t = 0.0; t < 0.30; t += chunk) d.Process(speech, chunk);
+            var early = false;
+            for (var t = 0.0; t < 0.60; t += chunk) early |= d.Process(quiet, chunk); // 0.6 s < 1.0
+            for (var t = 0.0; t < 0.20; t += chunk) d.Process(speech, chunk);          // resume
+            var mid = false;
+            for (var t = 0.0; t < 0.60; t += chunk) mid |= d.Process(quiet, chunk);    // 0.6 s < 1.0 again
+            var late = false;
+            for (var t = 0.0; t < 0.60; t += chunk) late |= d.Process(quiet, chunk);   // crosses 1.0
+            Pass("resumed speech resets timer", !early && !mid && late, $"early={early}, mid={mid}, late={late}");
+        }
+
+        log.AppendLine(allPass ? "ALL VAD TESTS PASSED" : "SOME VAD TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
     }
 
     private static async Task<int> RunAsync(string wavPath, string outputPath, GgmlType modelType)

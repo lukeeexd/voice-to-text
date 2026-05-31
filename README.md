@@ -37,8 +37,10 @@ On first launch the `large-v3-turbo` model (~1.6 GB) is downloaded once to
 ### Usage
 
 - The tray icon is **blue** (idle), **red** (recording), **amber** (transcribing).
-- Press the hotkey (default **Ctrl + Shift + Space**) to start, speak, press
-  again to stop. The transcription is pasted at your cursor.
+- Press the hotkey (default **Ctrl + Shift + Space**) to start and speak. By
+  default it **auto-stops after a pause** (configurable in Settings); you can
+  also press the hotkey again to stop immediately. The transcription is then
+  pasted at your cursor.
 - Double-click the tray icon (or right-click → Settings) to pick a microphone,
   change the hotkey, and toggle **start on login**.
 - The hotkey can be a single key (e.g. an extra/macro key or `F13`) or a
@@ -98,7 +100,8 @@ NuGet package (no install required) — see the `ISCC.exe` inside that package.
 
 ## Roadmap
 
-- Silero VAD auto-stop on trailing silence
+- Upgrade auto-stop to Silero VAD (more robust against background noise than the
+  current energy-based detector)
 - Hold-to-talk mode
 - Live/streaming partial results
 - Model picker + downloader UI

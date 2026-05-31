@@ -17,6 +17,12 @@ public sealed class AppSettings
     /// <summary>Whisper language code, or "auto" to detect.</summary>
     public string Language { get; set; } = "auto";
 
+    /// <summary>Automatically stop recording after a pause in speech.</summary>
+    public bool AutoStopEnabled { get; set; } = true;
+
+    /// <summary>Seconds of silence (after speech) before auto-stopping.</summary>
+    public double AutoStopSilenceSeconds { get; set; } = 1.5;
+
     public GgmlType ModelType { get; set; } = GgmlType.LargeV3Turbo;
 
     [JsonIgnore]

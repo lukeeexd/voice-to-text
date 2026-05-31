@@ -8,6 +8,10 @@ namespace VoiceToText.Audio;
 /// WASAPI shared-mode capture. Buffers raw audio in the device's native format
 /// while recording, then on stop downmixes to mono and resamples to 16 kHz float[]
 /// (the format Whisper requires) using NAudio's managed WDL resampler.
+///
+/// When auto-stop is enabled it meters each incoming chunk's RMS level and feeds
+/// a <see cref="SilenceDetector"/> to raise <see cref="SilenceDetected"/> after a
+/// sustained pause.
 /// </summary>
 public sealed class WasapiAudioSource : IAudioSource
 {
@@ -22,9 +26,14 @@ public sealed class WasapiAudioSource : IAudioSource
     private TaskCompletionSource<bool>? _stopped;
     private long _maxBytes;
 
+    private SilenceDetector? _silenceDetector;
+    private bool _silenceSignaled;
+
     public bool IsRecording => _capture is not null;
 
-    public void Start(string? deviceId)
+    public event Action? SilenceDetected;
+
+    public void Start(string? deviceId, bool autoStop, double autoStopSilenceSeconds)
     {
         if (IsRecording)
             throw new InvalidOperationException("Already recording.");
@@ -39,6 +48,8 @@ public sealed class WasapiAudioSource : IAudioSource
         _maxBytes = (long)(_format.AverageBytesPerSecond * MaxDuration.TotalSeconds);
         _buffer = new MemoryStream();
         _stopped = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _silenceDetector = autoStop ? new SilenceDetector(autoStopSilenceSeconds) : null;
+        _silenceSignaled = false;
 
         capture.DataAvailable += OnDataAvailable;
         capture.RecordingStopped += OnRecordingStopped;
@@ -70,6 +81,7 @@ public sealed class WasapiAudioSource : IAudioSource
         _capture = null;
         _buffer?.Dispose();
         _buffer = null;
+        _silenceDetector = null;
 
         return Resample(raw, format);
     }
@@ -78,14 +90,60 @@ public sealed class WasapiAudioSource : IAudioSource
     {
         lock (_lock)
         {
-            if (_buffer is null) return;
-            if (_buffer.Length >= _maxBytes) return; // hit safety cap; drop further audio
-            _buffer.Write(e.Buffer, 0, e.BytesRecorded);
+            if (_buffer is not null && _buffer.Length < _maxBytes)
+                _buffer.Write(e.Buffer, 0, e.BytesRecorded);
+        }
+
+        var detector = _silenceDetector;
+        if (detector is null || _silenceSignaled || _format is null || e.BytesRecorded <= 0)
+            return;
+
+        var rms = ComputeRms(e.Buffer, e.BytesRecorded, _format);
+        var chunkSeconds = (double)e.BytesRecorded / _format.AverageBytesPerSecond;
+        if (detector.Process(rms, chunkSeconds))
+        {
+            _silenceSignaled = true;
+            SilenceDetected?.Invoke();
         }
     }
 
     private void OnRecordingStopped(object? sender, StoppedEventArgs e)
         => _stopped?.TrySetResult(true);
+
+    /// <summary>RMS level (0..~1) of a raw capture buffer. Handles 32-bit float and 16-bit PCM.</summary>
+    private static double ComputeRms(byte[] buffer, int bytes, WaveFormat format)
+    {
+        switch (format.BitsPerSample)
+        {
+            case 32:
+            {
+                var count = bytes / 4;
+                if (count == 0) return 0;
+                double sum = 0;
+                for (var i = 0; i < count; i++)
+                {
+                    var s = BitConverter.ToSingle(buffer, i * 4);
+                    sum += s * s;
+                }
+                return Math.Sqrt(sum / count);
+            }
+            case 16:
+            {
+                var count = bytes / 2;
+                if (count == 0) return 0;
+                double sum = 0;
+                for (var i = 0; i < count; i++)
+                {
+                    double s = BitConverter.ToInt16(buffer, i * 2) / 32768.0;
+                    sum += s * s;
+                }
+                return Math.Sqrt(sum / count);
+            }
+            default:
+                // Unknown sample format — report "loud" so we never auto-stop wrongly.
+                return double.MaxValue;
+        }
+    }
 
     private static float[] Resample(byte[] raw, WaveFormat sourceFormat)
     {

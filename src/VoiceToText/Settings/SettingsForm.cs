@@ -6,8 +6,8 @@ using VoiceToText.Hotkeys;
 namespace VoiceToText.Settings;
 
 /// <summary>
-/// Minimal settings UI: choose the input microphone, the global hotkey, and
-/// whether to start on login. On OK, changes are written into the supplied
+/// Settings UI: input microphone, global hotkey, auto-stop on silence, and
+/// start-on-login. On OK, changes are written into the supplied
 /// <see cref="AppSettings"/> (and the Run registry key is updated).
 /// </summary>
 public sealed class SettingsForm : Form
@@ -15,8 +15,10 @@ public sealed class SettingsForm : Form
     private readonly AppSettings _settings;
     private readonly ComboBox _deviceCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly TextBox _hotkeyBox = new() { ReadOnly = true, Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center };
-    private readonly Label _hintLabel = new() { AutoSize = true, ForeColor = SystemColors.GrayText, Location = new Point(16, 130), MaximumSize = new Size(388, 0) };
-    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(16, 172) };
+    private readonly Label _hintLabel = new() { AutoSize = true, ForeColor = SystemColors.GrayText, Location = new Point(16, 126), MaximumSize = new Size(388, 0) };
+    private readonly CheckBox _autoStopCheck = new() { Text = "Auto-stop after a pause in speech", AutoSize = true, Location = new Point(16, 162) };
+    private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M };
+    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(16, 222) };
     private HotkeyDefinition _hotkey;
 
     public SettingsForm(AppSettings settings)
@@ -27,6 +29,9 @@ public sealed class SettingsForm : Form
         LoadDevices();
         _hotkeyBox.Text = _hotkey.Describe();
         _startupCheck.Checked = AutoStart.IsEnabled();
+        _autoStopCheck.Checked = settings.AutoStopEnabled;
+        _silenceUpDown.Value = (decimal)Math.Clamp(settings.AutoStopSilenceSeconds, 0.3, 10.0);
+        _silenceUpDown.Enabled = _autoStopCheck.Checked;
         UpdateHint();
     }
 
@@ -39,26 +44,34 @@ public sealed class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(420, 246);
+        ClientSize = new Size(420, 300);
 
         var deviceLabel = new Label { Text = "Microphone:", Location = new Point(16, 16), AutoSize = true };
         _deviceCombo.SetBounds(16, 38, 388, 24);
         _deviceCombo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
 
-        var hotkeyLabel = new Label { Text = "Dictation hotkey:", Location = new Point(16, 78), AutoSize = true };
-        _hotkeyBox.SetBounds(16, 100, 388, 26);
+        var hotkeyLabel = new Label { Text = "Dictation hotkey:", Location = new Point(16, 74), AutoSize = true };
+        _hotkeyBox.SetBounds(16, 96, 388, 26);
         _hotkeyBox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
         _hotkeyBox.GotFocus += (_, _) => _hotkeyBox.Text = "Press a key or combination…";
         _hotkeyBox.LostFocus += (_, _) => _hotkeyBox.Text = _hotkey.Describe();
 
+        _autoStopCheck.CheckedChanged += (_, _) => _silenceUpDown.Enabled = _autoStopCheck.Checked;
+        var stopAfterLabel = new Label { Text = "Stop after", Location = new Point(36, 190), AutoSize = true };
+        _silenceUpDown.SetBounds(112, 188, 56, 24);
+        var secondsLabel = new Label { Text = "seconds of silence", Location = new Point(174, 190), AutoSize = true };
+
         var okButton = new Button { Text = "Save", DialogResult = DialogResult.OK };
-        okButton.SetBounds(228, 204, 84, 30);
+        okButton.SetBounds(228, 258, 84, 30);
         okButton.Click += OnSave;
 
         var cancelButton = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
-        cancelButton.SetBounds(320, 204, 84, 30);
+        cancelButton.SetBounds(320, 258, 84, 30);
 
-        Controls.AddRange(deviceLabel, _deviceCombo, hotkeyLabel, _hotkeyBox, _hintLabel, _startupCheck, okButton, cancelButton);
+        Controls.AddRange(
+            deviceLabel, _deviceCombo, hotkeyLabel, _hotkeyBox, _hintLabel,
+            _autoStopCheck, stopAfterLabel, _silenceUpDown, secondsLabel,
+            _startupCheck, okButton, cancelButton);
         AcceptButton = okButton;
         CancelButton = cancelButton;
     }
@@ -125,6 +138,8 @@ public sealed class SettingsForm : Form
     {
         _settings.InputDeviceId = (_deviceCombo.SelectedItem as AudioInputDevice)?.Id;
         _settings.Hotkey = _hotkey;
+        _settings.AutoStopEnabled = _autoStopCheck.Checked;
+        _settings.AutoStopSilenceSeconds = (double)_silenceUpDown.Value;
         AutoStart.Apply(_startupCheck.Checked);
     }
 }

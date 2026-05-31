@@ -45,7 +45,22 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _hotkeys.Pressed += OnHotkeyPressed;
         RegisterHotkey();
 
+        _audio.SilenceDetected += OnSilenceDetected;
+
         _ = Task.Run(WarmUpAsync);
+    }
+
+    // Fires on the capture thread when auto-stop detects a pause; marshal to the
+    // UI thread and stop exactly as a manual hotkey-stop would.
+    private void OnSilenceDetected()
+    {
+        if (!_window.IsHandleCreated)
+            return;
+        _window.BeginInvoke(() =>
+        {
+            if (_state == AppState.Recording && !_busy)
+                _ = StopAndTranscribeAsync();
+        });
     }
 
     private ContextMenuStrip BuildMenu()
@@ -89,7 +104,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         try
         {
-            _audio.Start(_settings.InputDeviceId);
+            _audio.Start(_settings.InputDeviceId, _settings.AutoStopEnabled, _settings.AutoStopSilenceSeconds);
             SetState(AppState.Recording);
         }
         catch (Exception ex)

@@ -21,6 +21,12 @@ internal static class Program
             return SelfTest.Run(wav, outFile, model);
         }
 
+        if (args.Length > 0 && args[0].Equals("--vadtest", StringComparison.OrdinalIgnoreCase))
+        {
+            var outFile = args.Length > 1 ? args[1] : "vadtest-output.txt";
+            return SelfTest.RunVadTest(outFile);
+        }
+
         ApplicationConfiguration.Initialize();
         using var context = new TrayApplicationContext();
         Application.Run(context);

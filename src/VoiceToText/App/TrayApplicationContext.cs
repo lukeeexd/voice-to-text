@@ -30,6 +30,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private bool _busy;
     private int _updateInProgress; // 0/1, set/cleared via Interlocked
 
+    private string VersionLabel => _updates.CurrentVersion is { } v ? $"v{v.ToString(3)}" : "";
+
     public TrayApplicationContext(string? postUpdateTarget = null)
     {
         _postUpdateTarget = postUpdateTarget;
@@ -49,7 +51,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             Visible = true,
             Icon = _icons.Get(AppState.Idle),
-            Text = "Voice to Text",
+            Text = $"Voice to Text {VersionLabel}".TrimEnd(),
             ContextMenuStrip = BuildMenu(),
         };
         _trayIcon.DoubleClick += (_, _) => ShowSettings();
@@ -167,7 +169,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             AppState.Recording => "Voice to Text — Recording…",
             AppState.Transcribing => "Voice to Text — Transcribing…",
-            _ => "Voice to Text",
+            _ => $"Voice to Text {VersionLabel}".TrimEnd(),
         };
     }
 
@@ -185,7 +187,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
 
             await _stt.LoadAsync().ConfigureAwait(false);
-            _window.BeginInvoke(() => _trayIcon.Text = $"Voice to Text — ready ({_settings.Hotkey.Describe()})");
+            _window.BeginInvoke(() => _trayIcon.Text = $"Voice to Text {VersionLabel} — ready ({_settings.Hotkey.Describe()})");
         }
         catch (Exception ex)
         {
@@ -213,7 +215,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         if (_hotkeys.Register(_settings.Hotkey))
         {
             _settings.Save();
-            _trayIcon.Text = $"Voice to Text — ready ({_settings.Hotkey.Describe()})";
+            _trayIcon.Text = $"Voice to Text {VersionLabel} — ready ({_settings.Hotkey.Describe()})";
         }
         else
         {

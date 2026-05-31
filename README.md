@@ -39,8 +39,10 @@ On first launch the `large-v3-turbo` model (~1.6 GB) is downloaded once to
 - The tray icon is **blue** (idle), **red** (recording), **amber** (transcribing).
 - Press the hotkey (default **Ctrl + Shift + Space**) to start, speak, press
   again to stop. The transcription is pasted at your cursor.
-- Double-click the tray icon (or right-click → Settings) to pick a microphone
-  and change the hotkey.
+- Double-click the tray icon (or right-click → Settings) to pick a microphone,
+  change the hotkey, and toggle **start on login**.
+- The hotkey can be a single key (e.g. an extra/macro key or `F13`) or a
+  modifier combo. Esc/Tab/Enter stay reserved for the dialog.
 
 ### Verify the engine (no mic needed)
 
@@ -72,6 +74,20 @@ copy the whole `publish\` folder (or zip it).
 The speech model is still downloaded on first run to `%APPDATA%\VoiceToText\models`
 (it is intentionally not bundled into the exe).
 
+## Build the installer
+
+A per-user installer (no admin needed; Start-menu shortcut, optional desktop
+shortcut and start-on-login, clean uninstall) is defined in
+`installer\VoiceToText.iss` (Inno Setup).
+
+```powershell
+.\publish.ps1                       # 1. produce publish\
+iscc installer\VoiceToText.iss      # 2. compile -> installer\Output\VoiceToText-Setup.exe
+```
+
+If you don't have Inno Setup, its compiler ships in the `Tools.InnoSetup`
+NuGet package (no install required) — see the `ISCC.exe` inside that package.
+
 ## Known limitations
 
 - **Elevated windows:** Windows UIPI blocks both the hotkey and paste while an
@@ -86,5 +102,4 @@ The speech model is still downloaded on first run to `%APPDATA%\VoiceToText\mode
 - Hold-to-talk mode
 - Live/streaming partial results
 - Model picker + downloader UI
-- Auto-start on login, installer
 - Post-processing (punctuation/formatting, custom vocabulary, voice commands)

@@ -1,12 +1,14 @@
 using System.Drawing;
+using VoiceToText.App;
 using VoiceToText.Audio;
 using VoiceToText.Hotkeys;
 
 namespace VoiceToText.Settings;
 
 /// <summary>
-/// Minimal settings UI: choose the input microphone and the global hotkey.
-/// On OK, the changes are written into the supplied <see cref="AppSettings"/>.
+/// Minimal settings UI: choose the input microphone, the global hotkey, and
+/// whether to start on login. On OK, changes are written into the supplied
+/// <see cref="AppSettings"/> (and the Run registry key is updated).
 /// </summary>
 public sealed class SettingsForm : Form
 {
@@ -14,6 +16,7 @@ public sealed class SettingsForm : Form
     private readonly ComboBox _deviceCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly TextBox _hotkeyBox = new() { ReadOnly = true, Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center };
     private readonly Label _hintLabel = new() { AutoSize = true, ForeColor = SystemColors.GrayText, Location = new Point(16, 130), MaximumSize = new Size(388, 0) };
+    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(16, 172) };
     private HotkeyDefinition _hotkey;
 
     public SettingsForm(AppSettings settings)
@@ -23,17 +26,20 @@ public sealed class SettingsForm : Form
         BuildUi();
         LoadDevices();
         _hotkeyBox.Text = _hotkey.Describe();
+        _startupCheck.Checked = AutoStart.IsEnabled();
         UpdateHint();
     }
 
     private void BuildUi()
     {
         Text = "Voice to Text — Settings";
+        try { Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!); }
+        catch { /* no embedded icon (e.g. running under the debugger host) */ }
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(420, 210);
+        ClientSize = new Size(420, 246);
 
         var deviceLabel = new Label { Text = "Microphone:", Location = new Point(16, 16), AutoSize = true };
         _deviceCombo.SetBounds(16, 38, 388, 24);
@@ -46,13 +52,13 @@ public sealed class SettingsForm : Form
         _hotkeyBox.LostFocus += (_, _) => _hotkeyBox.Text = _hotkey.Describe();
 
         var okButton = new Button { Text = "Save", DialogResult = DialogResult.OK };
-        okButton.SetBounds(228, 164, 84, 30);
+        okButton.SetBounds(228, 204, 84, 30);
         okButton.Click += OnSave;
 
         var cancelButton = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
-        cancelButton.SetBounds(320, 164, 84, 30);
+        cancelButton.SetBounds(320, 204, 84, 30);
 
-        Controls.AddRange(deviceLabel, _deviceCombo, hotkeyLabel, _hotkeyBox, _hintLabel, okButton, cancelButton);
+        Controls.AddRange(deviceLabel, _deviceCombo, hotkeyLabel, _hotkeyBox, _hintLabel, _startupCheck, okButton, cancelButton);
         AcceptButton = okButton;
         CancelButton = cancelButton;
     }
@@ -106,7 +112,7 @@ public sealed class SettingsForm : Form
         if (_hotkey.IsRiskyBareKey())
         {
             _hintLabel.ForeColor = Color.FromArgb(200, 80, 0);
-            _hintLabel.Text = $"⚠ \"{_hotkey.Describe()}\" is a normal typing key — binding it will block that key everywhere. Use a dedicated/extra key (e.g. F13) or add Ctrl/Alt/Shift.";
+            _hintLabel.Text = "⚠ This is a normal typing key — it would be intercepted everywhere. Add Ctrl/Alt/Shift, or use a dedicated key (e.g. F13).";
         }
         else
         {
@@ -119,5 +125,6 @@ public sealed class SettingsForm : Form
     {
         _settings.InputDeviceId = (_deviceCombo.SelectedItem as AudioInputDevice)?.Id;
         _settings.Hotkey = _hotkey;
+        AutoStart.Apply(_startupCheck.Checked);
     }
 }

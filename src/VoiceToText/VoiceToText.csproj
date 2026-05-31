@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>VoiceToText</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="Whisper.net" Version="1.9.0" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
+    <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.0" />
+  </ItemGroup>
+
+  <!--
+    The Whisper.net Vulkan/CPU runtime packages ship native libs for every OS/arch.
+    On a Windows x64 publish the foreign ones (linux/osx/win-x86/win-arm) are dead
+    weight (~50 MB), so strip them from the publish output automatically.
+  -->
+  <Target Name="StripForeignNativeRuntimes" AfterTargets="Publish">
+    <ItemGroup>
+      <_ForeignRid Include="linux-x64;linux-arm64;linux-arm;osx;osx-x64;osx-arm64;win-x86;win-arm64;win-arm" />
+      <_ForeignRuntimeDir Include="@(_ForeignRid->'$(PublishDir)runtimes\%(Identity)')" />
+      <_ForeignRuntimeDir Include="@(_ForeignRid->'$(PublishDir)runtimes\vulkan\%(Identity)')" />
+    </ItemGroup>
+    <RemoveDir Directories="@(_ForeignRuntimeDir)" />
+    <Message Importance="high" Text="Stripped foreign native runtimes from $(PublishDir)runtimes." />
+  </Target>
+
+</Project>

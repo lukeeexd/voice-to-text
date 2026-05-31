@@ -1,0 +1,22 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+publish/
+*.user
+
+# Installer output
+installer/Output/
+
+# Rider / VS
+.idea/
+.vs/
+*.suo
+
+# Local model cache (if ever placed in-tree)
+models/
+*.bin
+
+# Logs / self-test artifacts
+selftest-output.txt
+*.log

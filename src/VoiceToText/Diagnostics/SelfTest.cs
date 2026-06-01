@@ -276,6 +276,7 @@ internal static class SelfTest
         var arm = new DashboardModel(ar, today, 40);
         Pass("avg rounds 32/3 -> 11", arm.AvgWordsPerDictation == 11, $"={arm.AvgWordsPerDictation}");
         Pass("speaking wpm rounded", tm.SpeakingWpm == (int)Math.Round(t.SpeakingWpm), $"={tm.SpeakingWpm}");
+        Pass("speaking time text", tm.SpeakingTimeText == StatsFormat.Duration(t.TotalSeconds / 60.0), tm.SpeakingTimeText);
         Pass("best dictation text", tm.BestDictationText == "19 words", tm.BestDictationText ?? "null");
         Pass("busiest day text", tm.BusiestDayText == "Jun 10 (19 words)", tm.BusiestDayText ?? "null");
         Pass("streak passthrough", tm.Streak == t.CurrentStreak(today), $"={tm.Streak}");

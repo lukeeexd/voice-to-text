@@ -26,6 +26,7 @@ public sealed class DashboardModel
     public long TotalDictations { get; }
     public int AvgWordsPerDictation { get; }
     public int SpeakingWpm { get; }
+    public string SpeakingTimeText { get; }
     public IReadOnlyList<DayBar> DailySeries { get; }
     public long DailyMax { get; }
     public IReadOnlyList<AppBar> TopApps { get; }
@@ -40,6 +41,7 @@ public sealed class DashboardModel
         Streak = data.CurrentStreak(today);
         AvgWordsPerDictation = (int)Math.Round(data.AverageWordsPerDictation);
         SpeakingWpm = (int)Math.Round(data.SpeakingWpm);
+        SpeakingTimeText = StatsFormat.Duration(data.TotalSeconds / 60.0);
 
         TimeSavedText = StatsFormat.Duration(data.EstimatedMinutesSaved(typingWpm));
         TimeSavedSubtext = $"vs typing at {typingWpm:N0} WPM";

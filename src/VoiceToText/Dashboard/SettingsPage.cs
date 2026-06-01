@@ -9,25 +9,26 @@ namespace VoiceToText.Dashboard;
 
 /// <summary>
 /// Settings as a page inside the dashboard window: microphone, speech model, global hotkey,
-/// auto-stop on silence, the on-screen indicator, typing speed (WPM), automatic updates, and
-/// start-on-login. Save writes into the shared <see cref="AppSettings"/> (and the Run key) and
-/// raises <see cref="SettingsSaved"/>.
+/// activation mode, auto-stop on silence, the on-screen indicator, typing speed (WPM), automatic
+/// updates, and start-on-login. Save writes into the shared <see cref="AppSettings"/> (and the
+/// Run key) and raises <see cref="SettingsSaved"/>.
 /// </summary>
 internal sealed class SettingsPage : UserControl
 {
     private readonly AppSettings _settings;
     private readonly ComboBox _deviceCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
     private readonly ComboBox _modelCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
+    private readonly ComboBox _activationCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
     private readonly TextBox _hotkeyBox = new() { ReadOnly = true, Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
     private readonly Label _hintLabel = new() { AutoSize = true, ForeColor = Theme.TextSecondary, Location = new Point(20, 184), MaximumSize = new Size(440, 0) };
-    private readonly CheckBox _autoStopCheck = new() { Text = "Auto-stop after a pause in speech", AutoSize = true, Location = new Point(20, 222), ForeColor = Theme.TextPrimary };
+    private readonly CheckBox _autoStopCheck = new() { Text = "Auto-stop after a pause in speech", AutoSize = true, Location = new Point(20, 282), ForeColor = Theme.TextPrimary };
     private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly CheckBox _overlayCheck = new() { Text = "Show on-screen indicator while dictating", AutoSize = true, Location = new Point(20, 282), ForeColor = Theme.TextPrimary };
+    private readonly CheckBox _overlayCheck = new() { Text = "Show on-screen indicator while dictating", AutoSize = true, Location = new Point(20, 342), ForeColor = Theme.TextPrimary };
     private readonly NumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly CheckBox _autoUpdateCheck = new() { Text = "Automatically check for updates on startup", AutoSize = true, Location = new Point(20, 352), ForeColor = Theme.TextPrimary };
+    private readonly CheckBox _autoUpdateCheck = new() { Text = "Automatically check for updates on startup", AutoSize = true, Location = new Point(20, 412), ForeColor = Theme.TextPrimary };
     private readonly TextBox _updateFolderBox = new() { BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(20, 452), ForeColor = Theme.TextPrimary };
-    private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓", Location = new Point(126, 498) };
+    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(20, 512), ForeColor = Theme.TextPrimary };
+    private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓", Location = new Point(126, 558) };
     private HotkeyDefinition _hotkey;
 
     public event Action? SettingsSaved;
@@ -66,13 +67,14 @@ internal sealed class SettingsPage : UserControl
     {
         _hotkeyBox.Text = _hotkey.Describe();
         _startupCheck.Checked = AutoStart.IsEnabled();
+        _activationCombo.SelectedIndex = _settings.HoldToTalk ? 1 : 0;
         _autoStopCheck.Checked = _settings.AutoStopEnabled;
         _silenceUpDown.Value = (decimal)Math.Clamp(_settings.AutoStopSilenceSeconds, 0.3, 10.0);
-        _silenceUpDown.Enabled = _autoStopCheck.Checked;
         _overlayCheck.Checked = _settings.ShowOverlay;
         _wpmUpDown.Value = (decimal)Math.Clamp(_settings.TypingSpeedWpm, 10, 300);
         _autoUpdateCheck.Checked = _settings.AutoUpdateEnabled;
         _updateFolderBox.Text = _settings.UpdateFeedFolder;
+        UpdateAutoStopEnabled();
         UpdateHint();
     }
 
@@ -91,23 +93,29 @@ internal sealed class SettingsPage : UserControl
         _hotkeyBox.GotFocus += (_, _) => { _hotkeyBox.Text = "Press a key or combination…"; HotkeyCaptureStarted?.Invoke(); };
         _hotkeyBox.LostFocus += (_, _) => { _hotkeyBox.Text = _hotkey.Describe(); HotkeyCaptureEnded?.Invoke(); };
 
-        _autoStopCheck.CheckedChanged += (_, _) => _silenceUpDown.Enabled = _autoStopCheck.Checked;
-        var stopAfterLabel = new Label { Text = "Stop after", Location = new Point(40, 248), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _silenceUpDown.SetBounds(116, 246, 56, 24);
-        var secondsLabel = new Label { Text = "seconds of silence", Location = new Point(178, 248), AutoSize = true, ForeColor = Theme.TextPrimary };
+        var activationLabel = new Label { Text = "Activation:", Location = new Point(20, 220), AutoSize = true, ForeColor = Theme.TextPrimary };
+        _activationCombo.SetBounds(20, 242, 200, 24);
+        _activationCombo.DrawItem += OnComboDrawItem;
+        _activationCombo.Items.AddRange(new object[] { "Press to toggle", "Hold to talk" });
+        _activationCombo.SelectedIndexChanged += (_, _) => UpdateAutoStopEnabled();
 
-        var wpmLabel = new Label { Text = "Typing speed:", Location = new Point(20, 316), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _wpmUpDown.SetBounds(108, 314, 60, 24);
-        var wpmSuffix = new Label { Text = "WPM  (used to estimate \"time saved\")", Location = new Point(176, 316), AutoSize = true, ForeColor = Theme.TextSecondary };
+        _autoStopCheck.CheckedChanged += (_, _) => UpdateAutoStopEnabled();
+        var stopAfterLabel = new Label { Text = "Stop after", Location = new Point(40, 308), AutoSize = true, ForeColor = Theme.TextPrimary };
+        _silenceUpDown.SetBounds(116, 306, 56, 24);
+        var secondsLabel = new Label { Text = "seconds of silence", Location = new Point(178, 308), AutoSize = true, ForeColor = Theme.TextPrimary };
 
-        var updateFolderLabel = new Label { Text = "Update folder:", Location = new Point(20, 386), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _updateFolderBox.SetBounds(110, 384, 280, 24);
-        var browseButton = new Button { Text = "Browse…", Location = new Point(396, 383), Size = new Size(64, 26), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
+        var wpmLabel = new Label { Text = "Typing speed:", Location = new Point(20, 376), AutoSize = true, ForeColor = Theme.TextPrimary };
+        _wpmUpDown.SetBounds(108, 374, 60, 24);
+        var wpmSuffix = new Label { Text = "WPM  (used to estimate \"time saved\")", Location = new Point(176, 376), AutoSize = true, ForeColor = Theme.TextSecondary };
+
+        var updateFolderLabel = new Label { Text = "Update folder:", Location = new Point(20, 446), AutoSize = true, ForeColor = Theme.TextPrimary };
+        _updateFolderBox.SetBounds(110, 444, 280, 24);
+        var browseButton = new Button { Text = "Browse…", Location = new Point(396, 443), Size = new Size(64, 26), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
         browseButton.FlatAppearance.BorderColor = Theme.CardBorder;
         browseButton.Click += OnBrowseUpdateFolder;
-        var updateNote = new Label { Text = "Updates run an installer from this folder — only enable this for a folder you trust.", Location = new Point(20, 414), AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(440, 0) };
+        var updateNote = new Label { Text = "Updates run an installer from this folder — only enable this for a folder you trust.", Location = new Point(20, 474), AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(440, 0) };
 
-        var saveButton = new Button { Text = "Save", Location = new Point(20, 492), Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White };
+        var saveButton = new Button { Text = "Save", Location = new Point(20, 552), Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White };
         saveButton.FlatAppearance.BorderSize = 0;
         saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
         saveButton.Click += OnSave;
@@ -116,11 +124,20 @@ internal sealed class SettingsPage : UserControl
         {
             deviceLabel, _deviceCombo, modelLabel, _modelCombo,
             hotkeyLabel, _hotkeyBox, _hintLabel,
+            activationLabel, _activationCombo,
             _autoStopCheck, stopAfterLabel, _silenceUpDown, secondsLabel,
             _overlayCheck, wpmLabel, _wpmUpDown, wpmSuffix,
             _autoUpdateCheck, updateFolderLabel, _updateFolderBox, browseButton, updateNote,
             _startupCheck, saveButton, _savedLabel,
         });
+    }
+
+    // Auto-stop applies only in press-to-toggle mode; the silence spinner only when it's also checked.
+    private void UpdateAutoStopEnabled()
+    {
+        bool hold = _activationCombo.SelectedIndex == 1;
+        _autoStopCheck.Enabled = !hold;
+        _silenceUpDown.Enabled = !hold && _autoStopCheck.Checked;
     }
 
     private void OnComboDrawItem(object? sender, DrawItemEventArgs e)
@@ -221,6 +238,7 @@ internal sealed class SettingsPage : UserControl
         if (_modelCombo.SelectedItem is ModelOption model)
             _settings.ModelType = model.Type;
         _settings.Hotkey = _hotkey;
+        _settings.HoldToTalk = _activationCombo.SelectedIndex == 1;
         _settings.AutoStopEnabled = _autoStopCheck.Checked;
         _settings.AutoStopSilenceSeconds = (double)_silenceUpDown.Value;
         _settings.ShowOverlay = _overlayCheck.Checked;

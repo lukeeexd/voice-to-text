@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Drawing;
 using VoiceToText.Audio;
+using VoiceToText.Dashboard;
 using VoiceToText.Hotkeys;
 using VoiceToText.Injection;
 using VoiceToText.Overlay;
@@ -30,6 +32,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private ISttEngine _stt;
     private ListeningOverlay? _overlay;
+    private DashboardForm? _dashboard;
+    private HotkeyDefinition _registeredHotkey;
     private AppState _state = AppState.Idle;
     private bool _busy;
     private int _updateInProgress; // 0/1, set/cleared via Interlocked
@@ -62,7 +66,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             Text = $"Voice to Text {VersionLabel}".TrimEnd(),
             ContextMenuStrip = BuildMenu(),
         };
-        _trayIcon.DoubleClick += (_, _) => ShowSettings();
+        _trayIcon.DoubleClick += (_, _) => ShowDashboard(DashboardPageKind.Dashboard);
 
         _hotkeys = new HotkeyManager(_window);
         _hotkeys.Pressed += OnHotkeyPressed;
@@ -126,8 +130,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Settings…", null, (_, _) => ShowSettings());
-        menu.Items.Add("Stats…", null, (_, _) => ShowStats());
+        var open = new ToolStripMenuItem("Open Dashboard", null, (_, _) => ShowDashboard(DashboardPageKind.Dashboard))
+        {
+            Font = new Font(menu.Font, FontStyle.Bold),
+        };
+        menu.Items.Add(open);
+        menu.Items.Add("Settings…", null, (_, _) => ShowDashboard(DashboardPageKind.Settings));
         menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdatesAsync(userInitiated: true));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
@@ -136,8 +144,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void RegisterHotkey()
     {
-        if (!_hotkeys.Register(_settings.Hotkey))
+        if (_hotkeys.Register(_settings.Hotkey))
         {
+            _registeredHotkey = _settings.Hotkey;
+        }
+        else
+        {
+            _registeredHotkey = _settings.Hotkey; // nothing else is registered; keep intent for re-tries
             _trayIcon.ShowBalloonTip(
                 6000,
                 "Voice to Text",
@@ -255,40 +268,51 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
-    private void ShowSettings()
+    private void ShowDashboard(DashboardPageKind page)
     {
-        var previousHotkey = _settings.Hotkey;
-
-        // Release the global hotkey while configuring so the user can re-capture
-        // the current combo and doesn't accidentally start dictation.
-        _hotkeys.Unregister();
-
-        using (var form = new SettingsForm(_settings))
+        if (_dashboard is null || _dashboard.IsDisposed)
         {
-            if (form.ShowDialog() != DialogResult.OK)
-            {
-                _hotkeys.Register(previousHotkey); // nothing saved; restore
-                return;
-            }
+            _dashboard = new DashboardForm(_settings, _stats, VersionLabel);
+            _dashboard.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
+            _dashboard.HotkeyCaptureEnded += OnHotkeyCaptureEnded;
+            _dashboard.SettingsSaved += OnSettingsSaved;
+            _dashboard.FormClosed += (_, _) => _dashboard = null;
         }
 
+        _dashboard.ShowPage(page);
+        if (!_dashboard.Visible) _dashboard.Show();
+        if (_dashboard.WindowState == FormWindowState.Minimized) _dashboard.WindowState = FormWindowState.Normal;
+        _dashboard.Activate();
+        _dashboard.BringToFront();
+    }
+
+    // Release the global hotkey only while the user is capturing one in Settings, so the
+    // captured keypress can't start dictation; restore the last good one when they leave the box.
+    private void OnHotkeyCaptureStarted() => _hotkeys.Unregister();
+    private void OnHotkeyCaptureEnded() => _hotkeys.Register(_registeredHotkey);
+
+    // Re-apply settings after a Save on the Settings page (mirrors the old post-dialog logic).
+    private void OnSettingsSaved()
+    {
+        _hotkeys.Unregister();
         if (_hotkeys.Register(_settings.Hotkey))
         {
+            _registeredHotkey = _settings.Hotkey;
             _settings.Save();
             _trayIcon.Text = $"Voice to Text {VersionLabel} — ready ({_settings.Hotkey.Describe()})";
         }
         else
         {
-            // The OS rejected the new combo (reserved/in use). Keep the old one
-            // working rather than leaving the app with no hotkey at all.
+            // OS rejected the new combo — keep the previous working one instead of none.
             var rejected = _settings.Hotkey;
-            _settings.Hotkey = previousHotkey;
+            _settings.Hotkey = _registeredHotkey;
             _settings.Save();
-            _hotkeys.Register(previousHotkey);
+            _hotkeys.Register(_registeredHotkey);
+            _dashboard?.ReloadSettings();
             _trayIcon.ShowBalloonTip(
                 6000,
                 "Voice to Text",
-                $"{rejected.Describe()} is reserved or already in use. Kept {previousHotkey.Describe()}.",
+                $"{rejected.Describe()} is reserved or already in use. Kept {_registeredHotkey.Describe()}.",
                 ToolTipIcon.Warning);
         }
 
@@ -448,11 +472,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 ToolTipIcon.Warning);
     }
 
-    private void ShowStats()
-    {
-        MessageBox.Show(_stats.Summary(_settings.TypingSpeedWpm), "Voice to Text - Stats", MessageBoxButtons.OK, MessageBoxIcon.Information);
-    }
-
     private void ShowError(string message)
         => _trayIcon.ShowBalloonTip(6000, "Voice to Text", message, ToolTipIcon.Error);
 
@@ -471,6 +490,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _icons.Dispose();
             _stt.Dispose();
             _overlay?.Dispose();
+            _dashboard?.Dispose();
             _window.Dispose();
         }
         base.Dispose(disposing);

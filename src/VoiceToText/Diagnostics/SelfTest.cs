@@ -367,7 +367,7 @@ internal static class SelfTest
 
             form.Close();
 
-            File.WriteAllText(outputPath, "DASH WINDOW OK (constructed, both pages shown + painted, closed)");
+            File.WriteAllText(outputPath, "DASH WINDOW OK (constructed, all pages shown + painted, closed)");
             Console.WriteLine("DASH WINDOW OK");
             return 0;
         }

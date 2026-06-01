@@ -54,6 +54,9 @@ public sealed class AppSettings
     /// <summary>Turn spoken "new line"/"new paragraph" into line breaks.</summary>
     public bool SpokenCommandsEnabled { get; set; } = true;
 
+    /// <summary>Hold the hotkey to record (release to stop) instead of press-to-toggle.</summary>
+    public bool HoldToTalk { get; set; } = false;
+
     [JsonIgnore]
     public HotkeyDefinition Hotkey
     {

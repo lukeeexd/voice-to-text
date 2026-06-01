@@ -49,6 +49,7 @@ internal sealed class DashboardPage : UserControl
         _r7.Click += (_, _) => SetRange(ChartRange.Week);
         _r30.Click += (_, _) => SetRange(ChartRange.Month);
         _rAll.Click += (_, _) => SetRange(ChartRange.All);
+        StyleRangeButtons(); // reflect the default (Month) active state from construction
 
         Controls.AddRange(new Control[]
         {

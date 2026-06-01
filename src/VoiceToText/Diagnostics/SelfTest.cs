@@ -311,6 +311,9 @@ internal static class SelfTest
         Pass("verbatim replace ($ #)", TextRules.Apply("price code", R(("price", "$5"), ("code", "C#")), false) == "$5 C#");
         Pass("rules apply in order", TextRules.Apply("a", R(("a", "b"), ("b", "c")), false) == "c");
         Pass("blank find skipped", TextRules.Apply("hello", R(("", "X")), false) == "hello");
+        Pass("verbatim $& stays literal (MatchEvaluator)", TextRules.Apply("foo", R(("foo", "$&")), false) == "$&");
+        Pass("replaces all occurrences", TextRules.Apply("github github", R(("github", "GitHub")), false) == "GitHub GitHub");
+        Pass("multi-word find", TextRules.Apply("visual studio daily", R(("visual studio", "VS")), false) == "VS daily");
 
         // Spoken commands
         Pass("new line", TextRules.Apply("a new line b", none, true) == "a\nb", Vis(TextRules.Apply("a new line b", none, true)));
@@ -319,6 +322,7 @@ internal static class SelfTest
         Pass("one-word newline", TextRules.Apply("a newline b", none, true) == "a\nb");
         Pass("commands off => literal", TextRules.Apply("a new line b", none, false) == "a new line b");
         Pass("commands run before replacements", TextRules.Apply("a new line b", R(("line", "LINE")), true) == "a\nb", Vis(TextRules.Apply("a new line b", R(("line", "LINE")), true)));
+        Pass("adjacent commands stack breaks", TextRules.Apply("a new paragraph new line b", none, true) == "a\n\n\nb", Vis(TextRules.Apply("a new paragraph new line b", none, true)));
 
         // Edges
         Pass("empty unchanged", TextRules.Apply("", none, true) == "");

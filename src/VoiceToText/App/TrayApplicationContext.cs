@@ -5,6 +5,7 @@ using VoiceToText.Dashboard;
 using VoiceToText.Hotkeys;
 using VoiceToText.Injection;
 using VoiceToText.Overlay;
+using VoiceToText.History;
 using VoiceToText.Stats;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
@@ -30,6 +31,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private readonly UpdateService _updates;
     private readonly StatsService _stats = new();
+    private readonly HistoryService _history = new();
     private readonly string? _postUpdateTarget;
 
     private ISttEngine _stt;
@@ -232,6 +234,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
                     var app = NativeForeground.GetForegroundProcessName();
                     _injector.Inject(text);
                     _stats.Record(words, seconds, app);
+                    if (_settings.HistoryEnabled)
+                        _history.Record(text, words, app);
                 });
             }
         }

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 using VoiceToText.Audio;
 using VoiceToText.Dashboard;
@@ -6,6 +6,7 @@ using VoiceToText.Overlay;
 using VoiceToText.Settings;
 using VoiceToText.Stats;
 using VoiceToText.Stt;
+using VoiceToText.TextProcessing;
 using VoiceToText.Update;
 using Whisper.net;
 using Whisper.net.Ggml;
@@ -288,8 +289,50 @@ internal static class SelfTest
         return allPass ? 0 : 1;
     }
 
+
+    /// <summary>Checks the pure text-rules engine (replacements + spoken commands). No UI.</summary>
+    public static int RunTextRulesTest(string outputPath)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+        static List<ReplacementRule> R(params (string f, string r)[] rs) =>
+            rs.Select(x => new ReplacementRule { Find = x.f, Replace = x.r }).ToList();
+        var none = new List<ReplacementRule>();
+        static string Vis(string s) => s.Replace("\n", "\\n");
+
+        // Replacements
+        Pass("ci whole-word replace", TextRules.Apply("love github and GitHub and GITHUB", R(("github", "GitHub")), false) == "love GitHub and GitHub and GitHub");
+        Pass("whole-word leaves githubbing", TextRules.Apply("githubbing", R(("github", "GitHub")), false) == "githubbing");
+        Pass("verbatim replace ($ #)", TextRules.Apply("price code", R(("price", "$5"), ("code", "C#")), false) == "$5 C#");
+        Pass("rules apply in order", TextRules.Apply("a", R(("a", "b"), ("b", "c")), false) == "c");
+        Pass("blank find skipped", TextRules.Apply("hello", R(("", "X")), false) == "hello");
+
+        // Spoken commands
+        Pass("new line", TextRules.Apply("a new line b", none, true) == "a\nb", Vis(TextRules.Apply("a new line b", none, true)));
+        Pass("new paragraph", TextRules.Apply("a new paragraph b", none, true) == "a\n\nb", Vis(TextRules.Apply("a new paragraph b", none, true)));
+        Pass("case + punctuation tolerant", TextRules.Apply("a. New line. b", none, true) == "a.\nb", Vis(TextRules.Apply("a. New line. b", none, true)));
+        Pass("one-word newline", TextRules.Apply("a newline b", none, true) == "a\nb");
+        Pass("commands off => literal", TextRules.Apply("a new line b", none, false) == "a new line b");
+        Pass("commands run before replacements", TextRules.Apply("a new line b", R(("line", "LINE")), true) == "a\nb", Vis(TextRules.Apply("a new line b", R(("line", "LINE")), true)));
+
+        // Edges
+        Pass("empty unchanged", TextRules.Apply("", none, true) == "");
+        Pass("trims output", TextRules.Apply("  hello world  ", none, false) == "hello world");
+
+        log.AppendLine(allPass ? "ALL TEXTRULES TESTS PASSED" : "SOME TEXTRULES TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
+
     /// <summary>Smoke test: construct the dashboard window, show both pages, force a synchronous
-    /// paint, and close. Catches construction/layout/OnPaint exceptions without a human. No asserts —
+    /// paint, and close. Catches construction/layout/OnPaint exceptions without a human. No asserts â€”
     /// returns 0 if nothing threw, 1 otherwise.</summary>
     public static int RunDashWindow(string outputPath)
     {

@@ -106,11 +106,13 @@ internal sealed class SettingsPage : UserControl
         e.DrawBackground();
         if (e.Index >= 0)
         {
-            var fillColor = (e.State & DrawItemState.Selected) != 0 ? Theme.NavActiveBg : Theme.CardBg;
-            using (var backBrush = new SolidBrush(fillColor))
-                e.Graphics.FillRectangle(backBrush, e.Bounds);
-            using (var textBrush = new SolidBrush(Theme.TextPrimary))
-                e.Graphics.DrawString(_deviceCombo.GetItemText(_deviceCombo.Items[e.Index]), e.Font ?? Font, textBrush, e.Bounds);
+            var selected = (e.State & DrawItemState.Selected) != 0;
+            using var backBrush = new SolidBrush(selected ? Theme.NavActiveBg : Theme.CardBg);
+            e.Graphics.FillRectangle(backBrush, e.Bounds);
+            using var textBrush = new SolidBrush(selected ? Theme.NavActiveText : Theme.TextPrimary);
+            using var format = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
+            var textRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 6, e.Bounds.Height);
+            e.Graphics.DrawString(_deviceCombo.GetItemText(_deviceCombo.Items[e.Index]), e.Font ?? Font, textBrush, textRect, format);
         }
         e.DrawFocusRectangle();
     }

@@ -242,6 +242,18 @@ internal static class SelfTest
         Pass("t-1 zero-filled", dm.DailySeries[28].Words == 0);
         Pass("t-40 excluded => max 10", dm.DailyMax == 10, $"={dm.DailyMax}");
 
+        // --- Activity(range) windows ---
+        var act = new DashboardModel(sd, today, 40); // sd: today=10, t-2=4, t-40=999
+        var wk = act.Activity(ChartRange.Week);
+        Pass("Activity Week = 7 bars ending today", wk.Bars.Count == 7 && wk.Bars[6].Date == today, $"={wk.Bars.Count}");
+        Pass("Activity Week max = 10 (t-40 outside)", wk.Max == 10, $"={wk.Max}");
+        Pass("Activity Month = 30 bars", act.Activity(ChartRange.Month).Bars.Count == 30, $"={act.Activity(ChartRange.Month).Bars.Count}");
+        var all = act.Activity(ChartRange.All);
+        Pass("Activity All spans t-40..today = 41 bars", all.Bars.Count == 41 && all.Bars[0].Date == today.AddDays(-40) && all.Bars[40].Date == today, $"={all.Bars.Count}");
+        Pass("Activity All max includes t-40 (999)", all.Max == 999, $"={all.Max}");
+        var allEmpty = new DashboardModel(new StatsData(), today, 40).Activity(ChartRange.All);
+        Pass("Activity All with no data => 30-bar fallback", allEmpty.Bars.Count == 30, $"={allEmpty.Bars.Count}");
+
         // --- Top apps + Other ---
         var sa = new StatsData();
         sa.Record(today, 70, 10, "A");

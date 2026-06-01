@@ -8,6 +8,12 @@ public readonly record struct DayBar(DateOnly Date, long Words);
 /// <summary>One row of the top-apps breakdown. Fraction is 0..1 of the widest row.</summary>
 public readonly record struct AppBar(string Name, long Words, double Fraction);
 
+/// <summary>Which window of daily activity the chart shows.</summary>
+public enum ChartRange { Week, Month, All }
+
+/// <summary>A zero-filled daily series (oldest→newest) plus its max bar height.</summary>
+public readonly record struct ActivitySeries(IReadOnlyList<DayBar> Bars, long Max);
+
 /// <summary>
 /// Pure view-model: turns a <see cref="StatsData"/> snapshot into ready-to-draw rows
 /// (hero strings, tile values, a zero-filled 30-day series, the top-apps breakdown,
@@ -15,6 +21,9 @@ public readonly record struct AppBar(string Name, long Words, double Fraction);
 /// </summary>
 public sealed class DashboardModel
 {
+    private readonly StatsData _data;
+    private readonly DateOnly _today;
+
     public const int SeriesDays = 30;
     public const int MaxApps = 5;
 
@@ -35,6 +44,8 @@ public sealed class DashboardModel
 
     public DashboardModel(StatsData data, DateOnly today, double typingWpm)
     {
+        _data = data;
+        _today = today;
         HasData = data.TotalDictations > 0;
         TotalWords = data.TotalWords;
         TotalDictations = data.TotalDictations;
@@ -46,18 +57,10 @@ public sealed class DashboardModel
         TimeSavedText = StatsFormat.Duration(data.EstimatedMinutesSaved(typingWpm));
         TimeSavedSubtext = $"vs typing at {typingWpm:N0} WPM";
 
-        // 30-day series, oldest -> newest, zero-filled for missing days.
-        var series = new List<DayBar>(SeriesDays);
-        long max = 0;
-        for (var i = SeriesDays - 1; i >= 0; i--)
-        {
-            var day = today.AddDays(-i);
-            long words = data.WordsOn(day);
-            if (words > max) max = words;
-            series.Add(new DayBar(day, words));
-        }
-        DailySeries = series;
-        DailyMax = Math.Max(1, max);
+        // Default chart window (30 days). The page re-queries other ranges via Activity().
+        var month = Activity(ChartRange.Month);
+        DailySeries = month.Bars;
+        DailyMax = month.Max;
 
         // Top apps by words desc; remainder folded into a single "Other" row.
         var ordered = data.Apps
@@ -81,6 +84,46 @@ public sealed class DashboardModel
 
         BestDictationText = data.MaxWordsInOneDictation > 0 ? $"{data.MaxWordsInOneDictation:N0} words" : null;
         BusiestDayText = FormatBusiestDay(data);
+    }
+
+    /// <summary>
+    /// Build the daily-activity series for a range: Week = last 7 days, Month = last 30,
+    /// All = earliest recorded day → today (one bar per day). All falls back to the Month
+    /// window when no activity is recorded, so the chart is never degenerate. Pure.
+    /// </summary>
+    public ActivitySeries Activity(ChartRange range)
+    {
+        int days = range switch
+        {
+            ChartRange.Week => 7,
+            ChartRange.All => AllRangeDays(),
+            _ => SeriesDays,
+        };
+
+        var bars = new List<DayBar>(days);
+        long max = 0;
+        for (var i = days - 1; i >= 0; i--)
+        {
+            var day = _today.AddDays(-i);
+            long words = _data.WordsOn(day);
+            if (words > max) max = words;
+            bars.Add(new DayBar(day, words));
+        }
+        return new ActivitySeries(bars, Math.Max(1, max));
+    }
+
+    // Inclusive day count from the earliest recorded day to today; Month-window fallback when empty.
+    private int AllRangeDays()
+    {
+        DateOnly? earliest = null;
+        foreach (var key in _data.Days.Keys)
+            if (DateOnly.TryParse(key, out var day) && (earliest is null || day < earliest))
+                earliest = day;
+
+        if (earliest is null || earliest > _today)
+            return SeriesDays;
+
+        return _today.DayNumber - earliest.Value.DayNumber + 1;
     }
 
     private static string? FormatBusiestDay(StatsData data)

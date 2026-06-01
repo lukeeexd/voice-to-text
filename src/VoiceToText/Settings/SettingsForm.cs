@@ -7,8 +7,8 @@ namespace VoiceToText.Settings;
 
 /// <summary>
 /// Settings UI: input microphone, global hotkey, auto-stop on silence, the on-screen
-/// indicator, and start-on-login. On OK, changes are written into the supplied
-/// <see cref="AppSettings"/> (and the Run registry key is updated).
+/// indicator, typing speed (for the time-saved estimate), and start-on-login. On OK,
+/// changes are written into the supplied <see cref="AppSettings"/> (and the Run registry key).
 /// </summary>
 public sealed class SettingsForm : Form
 {
@@ -18,8 +18,9 @@ public sealed class SettingsForm : Form
     private readonly Label _hintLabel = new() { AutoSize = true, ForeColor = SystemColors.GrayText, Location = new Point(16, 126), MaximumSize = new Size(388, 0) };
     private readonly CheckBox _autoStopCheck = new() { Text = "Auto-stop after a pause in speech", AutoSize = true, Location = new Point(16, 162) };
     private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M };
-    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(16, 222) };
-    private readonly CheckBox _overlayCheck = new() { Text = "Show on-screen indicator while dictating", AutoSize = true, Location = new Point(16, 252) };
+    private readonly CheckBox _overlayCheck = new() { Text = "Show on-screen indicator while dictating", AutoSize = true, Location = new Point(16, 222) };
+    private readonly NumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5 };
+    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(16, 290) };
     private HotkeyDefinition _hotkey;
 
     public SettingsForm(AppSettings settings)
@@ -34,6 +35,7 @@ public sealed class SettingsForm : Form
         _silenceUpDown.Value = (decimal)Math.Clamp(settings.AutoStopSilenceSeconds, 0.3, 10.0);
         _silenceUpDown.Enabled = _autoStopCheck.Checked;
         _overlayCheck.Checked = settings.ShowOverlay;
+        _wpmUpDown.Value = (decimal)Math.Clamp(settings.TypingSpeedWpm, 10, 300);
         UpdateHint();
     }
 
@@ -46,7 +48,7 @@ public sealed class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(420, 330);
+        ClientSize = new Size(420, 366);
 
         var deviceLabel = new Label { Text = "Microphone:", Location = new Point(16, 16), AutoSize = true };
         _deviceCombo.SetBounds(16, 38, 388, 24);
@@ -63,17 +65,22 @@ public sealed class SettingsForm : Form
         _silenceUpDown.SetBounds(112, 188, 56, 24);
         var secondsLabel = new Label { Text = "seconds of silence", Location = new Point(174, 190), AutoSize = true };
 
+        var wpmLabel = new Label { Text = "Typing speed:", Location = new Point(16, 256), AutoSize = true };
+        _wpmUpDown.SetBounds(104, 254, 60, 24);
+        var wpmSuffix = new Label { Text = "WPM  (used to estimate \"time saved\")", Location = new Point(172, 256), AutoSize = true };
+
         var okButton = new Button { Text = "Save", DialogResult = DialogResult.OK };
-        okButton.SetBounds(228, 288, 84, 30);
+        okButton.SetBounds(228, 324, 84, 30);
         okButton.Click += OnSave;
 
         var cancelButton = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
-        cancelButton.SetBounds(320, 288, 84, 30);
+        cancelButton.SetBounds(320, 324, 84, 30);
 
         Controls.AddRange(
             deviceLabel, _deviceCombo, hotkeyLabel, _hotkeyBox, _hintLabel,
             _autoStopCheck, stopAfterLabel, _silenceUpDown, secondsLabel,
-            _startupCheck, _overlayCheck, okButton, cancelButton);
+            _overlayCheck, wpmLabel, _wpmUpDown, wpmSuffix,
+            _startupCheck, okButton, cancelButton);
         AcceptButton = okButton;
         CancelButton = cancelButton;
     }
@@ -142,7 +149,8 @@ public sealed class SettingsForm : Form
         _settings.Hotkey = _hotkey;
         _settings.AutoStopEnabled = _autoStopCheck.Checked;
         _settings.AutoStopSilenceSeconds = (double)_silenceUpDown.Value;
-        AutoStart.Apply(_startupCheck.Checked);
         _settings.ShowOverlay = _overlayCheck.Checked;
+        _settings.TypingSpeedWpm = (double)_wpmUpDown.Value;
+        AutoStart.Apply(_startupCheck.Checked);
     }
 }

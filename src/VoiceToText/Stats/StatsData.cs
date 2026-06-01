@@ -61,9 +61,11 @@ public sealed class StatsData
     public double EstimatedMinutesSaved(double typingWpm) =>
         typingWpm <= 0 ? 0 : TotalWords / typingWpm;
 
+    [JsonIgnore]
     public double AverageWordsPerDictation =>
         TotalDictations == 0 ? 0 : (double)TotalWords / TotalDictations;
 
+    [JsonIgnore]
     public double SpeakingWpm =>
         TotalSeconds <= 0 ? 0 : TotalWords / (TotalSeconds / 60.0);
 

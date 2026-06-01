@@ -8,6 +8,7 @@ using VoiceToText.Overlay;
 using VoiceToText.Stats;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
+using VoiceToText.TextProcessing;
 using VoiceToText.Update;
 using Whisper.net.Ggml;
 
@@ -202,6 +203,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             var samples = await _audio.StopAndGetSamplesAsync().ConfigureAwait(false);
             var text = await _stt.TranscribeAsync(samples).ConfigureAwait(false);
+            text = TextRules.Apply(text, _settings.Replacements, _settings.SpokenCommandsEnabled);
 
             if (!string.IsNullOrWhiteSpace(text))
             {

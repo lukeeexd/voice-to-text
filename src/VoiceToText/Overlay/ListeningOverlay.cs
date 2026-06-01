@@ -201,12 +201,26 @@ internal sealed class ListeningOverlay : Form
         g.DrawLine(pen, cx - 4, r.Bottom - 1, cx + 4, r.Bottom - 1);
     }
 
+    // A filled pencil leaning like it's writing: rounded body (eraser end) + a
+    // triangular graphite tip pointing down-left. Drawn in a rotated frame.
     private static void DrawPencil(Graphics g, Rectangle r, Color color)
     {
-        using var pen = new Pen(color, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
-        g.DrawLine(pen, r.X + 2, r.Bottom - 2, r.Right - 4, r.Y + 4);    // pencil body (diagonal)
-        g.DrawLine(pen, r.X + 2, r.Bottom - 2, r.X + 6, r.Bottom - 6);   // tip
-        g.DrawLine(pen, r.Right - 7, r.Y + 2, r.Right - 2, r.Y + 7);     // end cap
+        using var brush = new SolidBrush(color);
+        var state = g.Save();
+        g.TranslateTransform(r.X + r.Width / 2f, r.Y + r.Height / 2f);
+        g.RotateTransform(-45f); // tip points down-left
+        const float w = 5.5f, half = w / 2f;
+        // Vertical pencil centered on the origin: rounded body (top = eraser),
+        // triangular tip at the bottom.
+        using (var bodyPath = RoundedRectF(new RectangleF(-half, -8f, w, 10f), 1.6f))
+            g.FillPath(brush, bodyPath);
+        g.FillPolygon(brush, new[]
+        {
+            new PointF(-half, 2f),
+            new PointF(half, 2f),
+            new PointF(0f, 8f),
+        });
+        g.Restore(state);
     }
 
     private static GraphicsPath RoundedRect(Rectangle r, int diameter) => RoundedRectF(r, diameter / 2f);

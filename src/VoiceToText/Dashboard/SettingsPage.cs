@@ -14,13 +14,13 @@ namespace VoiceToText.Dashboard;
 internal sealed class SettingsPage : UserControl
 {
     private readonly AppSettings _settings;
-    private readonly ComboBox _deviceCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly TextBox _hotkeyBox = new() { ReadOnly = true, Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center };
+    private readonly ComboBox _deviceCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
+    private readonly TextBox _hotkeyBox = new() { ReadOnly = true, Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
     private readonly Label _hintLabel = new() { AutoSize = true, ForeColor = Theme.TextSecondary, Location = new Point(20, 130), MaximumSize = new Size(440, 0) };
     private readonly CheckBox _autoStopCheck = new() { Text = "Auto-stop after a pause in speech", AutoSize = true, Location = new Point(20, 168), ForeColor = Theme.TextPrimary };
-    private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M };
+    private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
     private readonly CheckBox _overlayCheck = new() { Text = "Show on-screen indicator while dictating", AutoSize = true, Location = new Point(20, 228), ForeColor = Theme.TextPrimary };
-    private readonly NumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5 };
+    private readonly NumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
     private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(20, 296), ForeColor = Theme.TextPrimary };
     private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓", Location = new Point(128, 336) };
     private HotkeyDefinition _hotkey;
@@ -71,6 +71,7 @@ internal sealed class SettingsPage : UserControl
     {
         var deviceLabel = new Label { Text = "Microphone:", Location = new Point(20, 20), AutoSize = true, ForeColor = Theme.TextPrimary };
         _deviceCombo.SetBounds(20, 42, 440, 24);
+        _deviceCombo.DrawItem += OnDeviceComboDrawItem;
 
         var hotkeyLabel = new Label { Text = "Dictation hotkey:", Location = new Point(20, 78), AutoSize = true, ForeColor = Theme.TextPrimary };
         _hotkeyBox.SetBounds(20, 100, 440, 26);
@@ -86,7 +87,9 @@ internal sealed class SettingsPage : UserControl
         _wpmUpDown.SetBounds(108, 260, 60, 24);
         var wpmSuffix = new Label { Text = "WPM  (used to estimate \"time saved\")", Location = new Point(176, 262), AutoSize = true, ForeColor = Theme.TextSecondary };
 
-        var saveButton = new Button { Text = "Save", Location = new Point(20, 330), Size = new Size(96, 30), FlatStyle = FlatStyle.System };
+        var saveButton = new Button { Text = "Save", Location = new Point(20, 330), Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White };
+        saveButton.FlatAppearance.BorderSize = 0;
+        saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
         saveButton.Click += OnSave;
 
         Controls.AddRange(new Control[]
@@ -96,6 +99,20 @@ internal sealed class SettingsPage : UserControl
             _overlayCheck, wpmLabel, _wpmUpDown, wpmSuffix,
             _startupCheck, saveButton, _savedLabel,
         });
+    }
+
+    private void OnDeviceComboDrawItem(object? sender, DrawItemEventArgs e)
+    {
+        e.DrawBackground();
+        if (e.Index >= 0)
+        {
+            var fillColor = (e.State & DrawItemState.Selected) != 0 ? Theme.NavActiveBg : Theme.CardBg;
+            using (var backBrush = new SolidBrush(fillColor))
+                e.Graphics.FillRectangle(backBrush, e.Bounds);
+            using (var textBrush = new SolidBrush(Theme.TextPrimary))
+                e.Graphics.DrawString(_deviceCombo.GetItemText(_deviceCombo.Items[e.Index]), e.Font ?? Font, textBrush, e.Bounds);
+        }
+        e.DrawFocusRectangle();
     }
 
     private void LoadDevices()

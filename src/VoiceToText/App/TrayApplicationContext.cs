@@ -78,14 +78,21 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void CreateOverlay()
     {
-        var pos = _settings.OverlayX is int x && _settings.OverlayY is int y ? new Point(x, y) : (Point?)null;
-        _overlay = new ListeningOverlay(pos);
-        _overlay.PositionChanged += p =>
+        try
         {
-            _settings.OverlayX = p.X;
-            _settings.OverlayY = p.Y;
-            _settings.Save();
-        };
+            var pos = _settings.OverlayX is int x && _settings.OverlayY is int y ? new Point(x, y) : (Point?)null;
+            _overlay = new ListeningOverlay(pos);
+            _overlay.PositionChanged += p =>
+            {
+                _settings.OverlayX = p.X;
+                _settings.OverlayY = p.Y;
+                _settings.Save();
+            };
+        }
+        catch
+        {
+            _overlay = null; // overlay is cosmetic — never block startup
+        }
     }
 
     private void ApplyOverlaySetting()
@@ -202,12 +209,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
             AppState.Transcribing => "Voice to Text — Transcribing…",
             _ => $"Voice to Text {VersionLabel}".TrimEnd(),
         };
-        _overlay?.SetState(state switch
+        try
         {
-            AppState.Recording => OverlayState.Recording,
-            AppState.Transcribing => OverlayState.Transcribing,
-            _ => OverlayState.Hidden,
-        });
+            _overlay?.SetState(state switch
+            {
+                AppState.Recording => OverlayState.Recording,
+                AppState.Transcribing => OverlayState.Transcribing,
+                _ => OverlayState.Hidden,
+            });
+        }
+        catch { /* overlay is cosmetic — never disrupt dictation */ }
     }
 
     private async Task WarmUpAsync()

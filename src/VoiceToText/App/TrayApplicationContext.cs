@@ -297,7 +297,6 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private void OnHotkeyCaptureStarted() => _hotkeys.Unregister();
     private void OnHotkeyCaptureEnded() => _hotkeys.Register(_registeredHotkey);
 
-    // Re-apply settings after a Save on the Settings page (mirrors the old post-dialog logic).
     /// <summary>Swap the STT engine to the newly-selected model once idle (never mid-dictation).</summary>
     private void MaybeReloadModel()
     {
@@ -311,6 +310,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _ = Task.Run(WarmUpAsync);
     }
 
+    // Re-apply settings after a Save on the Settings page (mirrors the old post-dialog logic).
     private void OnSettingsSaved()
     {
         _hotkeys.Unregister();

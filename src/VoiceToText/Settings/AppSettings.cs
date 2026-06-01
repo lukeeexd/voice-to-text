@@ -57,6 +57,9 @@ public sealed class AppSettings
     /// <summary>Hold the hotkey to record (release to stop) instead of press-to-toggle.</summary>
     public bool HoldToTalk { get; set; } = false;
 
+    /// <summary>Keep a local, opt-in log of recent dictations (history.json). Off by default.</summary>
+    public bool HistoryEnabled { get; set; } = false;
+
     [JsonIgnore]
     public HotkeyDefinition Hotkey
     {

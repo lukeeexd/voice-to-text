@@ -23,3 +23,6 @@ models/
 # Logs / self-test artifacts
 selftest-output.txt
 *.log
+
+# Headless diagnostic outputs
+*-output.txt

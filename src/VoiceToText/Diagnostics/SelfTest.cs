@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using VoiceToText.Audio;
+using VoiceToText.Overlay;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
 using VoiceToText.Update;
@@ -90,6 +91,50 @@ internal static class SelfTest
         }
 
         log.AppendLine(allPass ? "ALL VAD TESTS PASSED" : "SOME VAD TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
+
+    /// <summary>Checks the pure LevelMeter mapping (RMS -> bar heights). No UI, no mic.</summary>
+    public static int RunWidgetTest(string outputPath)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+
+        var meter = new LevelMeter(14);
+        Pass("bar count is 14", meter.BarCount == 14);
+
+        var withinBounds = true;
+        meter.Reset();
+        foreach (var lvl in new[] { 0f, 0.02f, 0.2f, 0.05f, 0.5f, 0f })
+            for (var i = 0; i < 10; i++)
+                foreach (var h in meter.Update(lvl))
+                    if (h is < 0f or > 1f) withinBounds = false;
+        Pass("bar heights stay within 0..1", withinBounds);
+
+        meter.Reset();
+        float[] quiet = meter.Update(0f);
+        for (var i = 0; i < 40; i++) quiet = meter.Update(0f);
+        Pass("silence -> bars near baseline", quiet.Max() <= 0.15f, $"max={quiet.Max():F2}");
+
+        meter.Reset();
+        float[] loud = meter.Update(0.25f);
+        for (var i = 0; i < 40; i++) loud = meter.Update(0.25f);
+        var center = loud[loud.Length / 2];
+        Pass("loud -> center bar high", center >= 0.7f, $"center={center:F2}");
+
+        meter.Reset();
+        var firstCenter = meter.Update(0.25f)[7];
+        Pass("smoothing: first frame not maxed", firstCenter < 0.6f, $"first={firstCenter:F2}");
+
+        log.AppendLine(allPass ? "ALL WIDGET TESTS PASSED" : "SOME WIDGET TESTS FAILED");
         var result = log.ToString();
         File.WriteAllText(outputPath, result);
         Console.WriteLine(result);

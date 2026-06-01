@@ -2,6 +2,7 @@ using System.Diagnostics;
 using VoiceToText.Audio;
 using VoiceToText.Hotkeys;
 using VoiceToText.Injection;
+using VoiceToText.Overlay;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
 using VoiceToText.Update;
@@ -26,6 +27,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly string? _postUpdateTarget;
 
     private ISttEngine _stt;
+    private ListeningOverlay? _overlay;
     private AppState _state = AppState.Idle;
     private bool _busy;
     private int _updateInProgress; // 0/1, set/cleared via Interlocked
@@ -46,6 +48,10 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _window = new HiddenWindow();
         _window.EnsureHandle();
+
+        if (_settings.ShowOverlay)
+            CreateOverlay();
+        _audio.LevelChanged += level => _overlay?.SetLevel(level);
 
         _trayIcon = new NotifyIcon
         {
@@ -68,6 +74,31 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _window.BeginInvoke(ShowPostUpdateBalloon);
         else
             _ = Task.Run(() => CheckForUpdatesAsync(userInitiated: false));
+    }
+
+    private void CreateOverlay()
+    {
+        var pos = _settings.OverlayX is int x && _settings.OverlayY is int y ? new Point(x, y) : (Point?)null;
+        _overlay = new ListeningOverlay(pos);
+        _overlay.PositionChanged += p =>
+        {
+            _settings.OverlayX = p.X;
+            _settings.OverlayY = p.Y;
+            _settings.Save();
+        };
+    }
+
+    private void ApplyOverlaySetting()
+    {
+        if (_settings.ShowOverlay && _overlay is null)
+        {
+            CreateOverlay();
+        }
+        else if (!_settings.ShowOverlay && _overlay is not null)
+        {
+            _overlay.Dispose();
+            _overlay = null;
+        }
     }
 
     // Fires on the capture thread when auto-stop detects a pause; marshal to the
@@ -171,6 +202,12 @@ internal sealed class TrayApplicationContext : ApplicationContext
             AppState.Transcribing => "Voice to Text — Transcribing…",
             _ => $"Voice to Text {VersionLabel}".TrimEnd(),
         };
+        _overlay?.SetState(state switch
+        {
+            AppState.Recording => OverlayState.Recording,
+            AppState.Transcribing => OverlayState.Transcribing,
+            _ => OverlayState.Hidden,
+        });
     }
 
     private async Task WarmUpAsync()
@@ -231,6 +268,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 $"{rejected.Describe()} is reserved or already in use. Kept {previousHotkey.Describe()}.",
                 ToolTipIcon.Warning);
         }
+
+        ApplyOverlaySetting();
     }
 
     private async Task CheckForUpdatesAsync(bool userInitiated)
@@ -403,6 +442,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _trayIcon.Dispose();
             _icons.Dispose();
             _stt.Dispose();
+            _overlay?.Dispose();
             _window.Dispose();
         }
         base.Dispose(disposing);

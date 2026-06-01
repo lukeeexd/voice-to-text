@@ -15,6 +15,12 @@ public interface IAudioSource
     /// </summary>
     event Action? SilenceDetected;
 
+    /// <summary>
+    /// Raised on the capture thread for every audio chunk while recording, with the
+    /// raw RMS level (~0..0.3). Drives the on-screen level meter.
+    /// </summary>
+    event Action<float>? LevelChanged;
+
     /// <summary>Begin capturing from the given device id (null = system default).</summary>
     /// <param name="autoStop">If true, watch for trailing silence and raise <see cref="SilenceDetected"/>.</param>
     /// <param name="autoStopSilenceSeconds">Seconds of silence after speech before auto-stopping.</param>

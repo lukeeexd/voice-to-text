@@ -6,8 +6,8 @@ using VoiceToText.Hotkeys;
 namespace VoiceToText.Settings;
 
 /// <summary>
-/// Settings UI: input microphone, global hotkey, auto-stop on silence, and
-/// start-on-login. On OK, changes are written into the supplied
+/// Settings UI: input microphone, global hotkey, auto-stop on silence, the on-screen
+/// indicator, and start-on-login. On OK, changes are written into the supplied
 /// <see cref="AppSettings"/> (and the Run registry key is updated).
 /// </summary>
 public sealed class SettingsForm : Form
@@ -19,6 +19,7 @@ public sealed class SettingsForm : Form
     private readonly CheckBox _autoStopCheck = new() { Text = "Auto-stop after a pause in speech", AutoSize = true, Location = new Point(16, 162) };
     private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M };
     private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(16, 222) };
+    private readonly CheckBox _overlayCheck = new() { Text = "Show on-screen indicator while dictating", AutoSize = true, Location = new Point(16, 252) };
     private HotkeyDefinition _hotkey;
 
     public SettingsForm(AppSettings settings)
@@ -32,6 +33,7 @@ public sealed class SettingsForm : Form
         _autoStopCheck.Checked = settings.AutoStopEnabled;
         _silenceUpDown.Value = (decimal)Math.Clamp(settings.AutoStopSilenceSeconds, 0.3, 10.0);
         _silenceUpDown.Enabled = _autoStopCheck.Checked;
+        _overlayCheck.Checked = settings.ShowOverlay;
         UpdateHint();
     }
 
@@ -44,7 +46,7 @@ public sealed class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(420, 300);
+        ClientSize = new Size(420, 330);
 
         var deviceLabel = new Label { Text = "Microphone:", Location = new Point(16, 16), AutoSize = true };
         _deviceCombo.SetBounds(16, 38, 388, 24);
@@ -62,16 +64,16 @@ public sealed class SettingsForm : Form
         var secondsLabel = new Label { Text = "seconds of silence", Location = new Point(174, 190), AutoSize = true };
 
         var okButton = new Button { Text = "Save", DialogResult = DialogResult.OK };
-        okButton.SetBounds(228, 258, 84, 30);
+        okButton.SetBounds(228, 288, 84, 30);
         okButton.Click += OnSave;
 
         var cancelButton = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
-        cancelButton.SetBounds(320, 258, 84, 30);
+        cancelButton.SetBounds(320, 288, 84, 30);
 
         Controls.AddRange(
             deviceLabel, _deviceCombo, hotkeyLabel, _hotkeyBox, _hintLabel,
             _autoStopCheck, stopAfterLabel, _silenceUpDown, secondsLabel,
-            _startupCheck, okButton, cancelButton);
+            _startupCheck, _overlayCheck, okButton, cancelButton);
         AcceptButton = okButton;
         CancelButton = cancelButton;
     }
@@ -141,5 +143,6 @@ public sealed class SettingsForm : Form
         _settings.AutoStopEnabled = _autoStopCheck.Checked;
         _settings.AutoStopSilenceSeconds = (double)_silenceUpDown.Value;
         AutoStart.Apply(_startupCheck.Checked);
+        _settings.ShowOverlay = _overlayCheck.Checked;
     }
 }

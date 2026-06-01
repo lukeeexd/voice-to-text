@@ -9,9 +9,9 @@ namespace VoiceToText.Audio;
 /// while recording, then on stop downmixes to mono and resamples to 16 kHz float[]
 /// (the format Whisper requires) using NAudio's managed WDL resampler.
 ///
-/// When auto-stop is enabled it meters each incoming chunk's RMS level and feeds
-/// a <see cref="SilenceDetector"/> to raise <see cref="SilenceDetected"/> after a
-/// sustained pause.
+/// Each incoming chunk's RMS level is published via <see cref="LevelChanged"/> (for
+/// the level meter) and, when auto-stop is enabled, fed to a <see cref="SilenceDetector"/>
+/// to raise <see cref="SilenceDetected"/> after a sustained pause.
 /// </summary>
 public sealed class WasapiAudioSource : IAudioSource
 {
@@ -32,6 +32,7 @@ public sealed class WasapiAudioSource : IAudioSource
     public bool IsRecording => _capture is not null;
 
     public event Action? SilenceDetected;
+    public event Action<float>? LevelChanged;
 
     public void Start(string? deviceId, bool autoStop, double autoStopSilenceSeconds)
     {
@@ -94,11 +95,16 @@ public sealed class WasapiAudioSource : IAudioSource
                 _buffer.Write(e.Buffer, 0, e.BytesRecorded);
         }
 
-        var detector = _silenceDetector;
-        if (detector is null || _silenceSignaled || _format is null || e.BytesRecorded <= 0)
+        if (_format is null || e.BytesRecorded <= 0)
             return;
 
         var rms = ComputeRms(e.Buffer, e.BytesRecorded, _format);
+        LevelChanged?.Invoke((float)rms);
+
+        var detector = _silenceDetector;
+        if (detector is null || _silenceSignaled)
+            return;
+
         var chunkSeconds = (double)e.BytesRecorded / _format.AverageBytesPerSecond;
         if (detector.Process(rms, chunkSeconds))
         {

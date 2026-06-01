@@ -23,6 +23,13 @@ public sealed class AppSettings
     /// <summary>Seconds of silence (after speech) before auto-stopping.</summary>
     public double AutoStopSilenceSeconds { get; set; } = 1.5;
 
+    /// <summary>Show the on-screen "listening" indicator while dictating.</summary>
+    public bool ShowOverlay { get; set; } = true;
+
+    /// <summary>Remembered overlay top-left position; null = default bottom-center of the primary screen.</summary>
+    public int? OverlayX { get; set; }
+    public int? OverlayY { get; set; }
+
     /// <summary>Folder (local or UNC) holding latest.json + the setup exe. Empty = no feed.</summary>
     public string UpdateFeedFolder { get; set; } = "";
 

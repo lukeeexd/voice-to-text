@@ -11,6 +11,9 @@ namespace VoiceToText.Stt;
 /// </summary>
 public sealed class WhisperSttEngine : ISttEngine
 {
+    // ~1s of silence is enough to compile the GPU/Vulkan inference pipeline during warm-up.
+    private const int WarmupSamples = 16_000;
+
     private readonly GgmlType _modelType;
     private readonly string _language;
     private WhisperFactory? _factory;
@@ -29,6 +32,30 @@ public sealed class WhisperSttEngine : ISttEngine
         var modelPath = await ModelManager.EnsureModelAsync(_modelType, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         _factory = WhisperFactory.FromPath(modelPath);
+
+        await PrimeAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The FIRST transcription after the model loads pays a one-time GPU/Vulkan pipeline
+    /// compilation (~1.5–2s); every later one is ~0.3s. Run a throwaway inference on silence
+    /// here so that cost lands during background warm-up, not on the user's first dictation.
+    /// Best-effort: a failure must never block loading or dictation.
+    /// </summary>
+    private async Task PrimeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var processor = _factory!.CreateBuilder().WithLanguage("en").Build();
+            var silence = new float[WarmupSamples];
+            await foreach (var _ in processor.ProcessAsync(silence, cancellationToken).ConfigureAwait(false))
+            {
+            }
+        }
+        catch
+        {
+            // Warm-up is best-effort.
+        }
     }
 
     public async Task<string> TranscribeAsync(float[] samples, CancellationToken cancellationToken = default)

@@ -3,6 +3,7 @@ using System.Text;
 using VoiceToText.Audio;
 using VoiceToText.Overlay;
 using VoiceToText.Settings;
+using VoiceToText.Stats;
 using VoiceToText.Stt;
 using VoiceToText.Update;
 using Whisper.net;
@@ -135,6 +136,70 @@ internal static class SelfTest
         Pass("smoothing: first frame not maxed", firstCenter < 0.6f, $"first={firstCenter:F2}");
 
         log.AppendLine(allPass ? "ALL WIDGET TESTS PASSED" : "SOME WIDGET TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
+
+    /// <summary>Checks the pure usage-stats model (recording + derived metrics). No UI, no I/O.</summary>
+    public static int RunStatsTest(string outputPath)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+
+        Pass("word count splits on whitespace", StatsData.CountWords("  hello   world\tfoo\n") == 3);
+        Pass("word count blank => 0", StatsData.CountWords("   ") == 0);
+
+        var s = new StatsData();
+        var d0 = new DateOnly(2026, 6, 1);
+        s.Record(d0, 10, 30.0, "Outlook");
+        s.Record(d0, 5, 15.0, "Chrome");
+        s.Record(d0, 0, 5.0, "Chrome"); // zero words ignored
+        Pass("totals", s.TotalWords == 15 && s.TotalDictations == 2, $"words={s.TotalWords}, dict={s.TotalDictations}");
+        Pass("max single dictation", s.MaxWordsInOneDictation == 10);
+        Pass("per-app split", s.Apps["Outlook"].Words == 10 && s.Apps["Chrome"].Words == 5 && s.Apps["Chrome"].Dictations == 1);
+        Pass("today words", s.WordsOn(d0) == 15);
+        Pass("time saved @40wpm", Math.Abs(s.EstimatedMinutesSaved(40) - 15 / 40.0) < 1e-9);
+        Pass("avg words/dictation", Math.Abs(s.AverageWordsPerDictation - 7.5) < 1e-9);
+        Pass("speaking wpm", Math.Abs(s.SpeakingWpm - 15 / (45.0 / 60.0)) < 1e-6, $"{s.SpeakingWpm:F1}");
+
+        var today = new DateOnly(2026, 6, 10);
+        var st = new StatsData();
+        st.Record(today, 1, 1, "A");
+        st.Record(today.AddDays(-1), 1, 1, "A");
+        st.Record(today.AddDays(-2), 1, 1, "A");
+        Pass("streak counts consecutive (3)", st.CurrentStreak(today) == 3, $"={st.CurrentStreak(today)}");
+
+        var sg = new StatsData();
+        sg.Record(today, 1, 1, "A");
+        sg.Record(today.AddDays(-2), 1, 1, "A"); // gap on -1
+        Pass("streak stops at a gap (1)", sg.CurrentStreak(today) == 1, $"={sg.CurrentStreak(today)}");
+
+        var sy = new StatsData();
+        sy.Record(today.AddDays(-1), 1, 1, "A");
+        sy.Record(today.AddDays(-2), 1, 1, "A");
+        Pass("streak alive via yesterday (2)", sy.CurrentStreak(today) == 2, $"={sy.CurrentStreak(today)}");
+
+        Pass("streak 0 when idle", new StatsData().CurrentStreak(today) == 0);
+
+        var sw = new StatsData();
+        sw.Record(today, 3, 1, "A");
+        sw.Record(today.AddDays(-6), 4, 1, "A");
+        sw.Record(today.AddDays(-7), 99, 1, "A"); // outside the 7-day window
+        Pass("words in last 7 days", sw.WordsInLastDays(today, 7) == 7, $"={sw.WordsInLastDays(today, 7)}");
+
+        var sb = new StatsData();
+        sb.Record(today, 2, 1, "A");
+        sb.Record(today.AddDays(-1), 9, 1, "A");
+        Pass("busiest day", sb.BusiestDay == today.AddDays(-1).ToString("yyyy-MM-dd"), sb.BusiestDay ?? "null");
+
+        log.AppendLine(allPass ? "ALL STATS TESTS PASSED" : "SOME STATS TESTS FAILED");
         var result = log.ToString();
         File.WriteAllText(outputPath, result);
         Console.WriteLine(result);

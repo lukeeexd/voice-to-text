@@ -23,6 +23,9 @@ public sealed class AppSettings
     /// <summary>Seconds of silence (after speech) before auto-stopping.</summary>
     public double AutoStopSilenceSeconds { get; set; } = 1.5;
 
+    /// <summary>Assumed typing speed (WPM) for the "time saved" estimate.</summary>
+    public double TypingSpeedWpm { get; set; } = 40;
+
     /// <summary>Show the on-screen "listening" indicator while dictating.</summary>
     public bool ShowOverlay { get; set; } = true;
 

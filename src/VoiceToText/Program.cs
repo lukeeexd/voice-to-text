@@ -30,6 +30,9 @@ internal static class Program
         if (args.Length > 0 && args[0].Equals("--widgettest", StringComparison.OrdinalIgnoreCase))
             return SelfTest.RunWidgetTest("widgettest-output.txt");
 
+        if (args.Length > 0 && args[0].Equals("--statstest", StringComparison.OrdinalIgnoreCase))
+            return SelfTest.RunStatsTest("statstest-output.txt");
+
         // Single-instance guard. The name matches the installer's AppMutex so Inno's
         // Restart Manager reliably closes this instance during an update, and so the
         // post-update relaunch / start-on-login can't spawn a second tray icon.

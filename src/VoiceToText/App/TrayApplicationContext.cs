@@ -3,6 +3,7 @@ using VoiceToText.Audio;
 using VoiceToText.Hotkeys;
 using VoiceToText.Injection;
 using VoiceToText.Overlay;
+using VoiceToText.Stats;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
 using VoiceToText.Update;
@@ -24,6 +25,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly AppSettings _settings;
 
     private readonly UpdateService _updates;
+    private readonly StatsService _stats = new();
     private readonly string? _postUpdateTarget;
 
     private ISttEngine _stt;
@@ -125,6 +127,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add("Settings…", null, (_, _) => ShowSettings());
+        menu.Items.Add("Stats…", null, (_, _) => ShowStats());
         menu.Items.Add("Check for updates…", null, (_, _) => _ = CheckForUpdatesAsync(userInitiated: true));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => ExitApp());
@@ -183,7 +186,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
             var text = await _stt.TranscribeAsync(samples).ConfigureAwait(false);
 
             if (!string.IsNullOrWhiteSpace(text))
-                _window.BeginInvoke(() => _injector.Inject(text));
+            {
+                var words = StatsData.CountWords(text);
+                var seconds = samples.Length / 16000.0;
+                _window.BeginInvoke(() =>
+                {
+                    var app = NativeForeground.GetForegroundProcessName();
+                    _injector.Inject(text);
+                    _stats.Record(words, seconds, app);
+                });
+            }
         }
         catch (Exception ex)
         {
@@ -434,6 +446,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _trayIcon.ShowBalloonTip(9000, "Voice to Text",
                 $"The update may not have completed (running v{current?.ToString() ?? "?"}). See {UpdateService.UpdateLogPath}.",
                 ToolTipIcon.Warning);
+    }
+
+    private void ShowStats()
+    {
+        MessageBox.Show(_stats.Summary(_settings.TypingSpeedWpm), "Voice to Text - Stats", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
     private void ShowError(string message)

@@ -9,8 +9,9 @@ namespace VoiceToText.Dashboard;
 
 /// <summary>
 /// Settings as a page inside the dashboard window: microphone, speech model, global hotkey,
-/// activation mode, auto-stop on silence, the on-screen indicator, typing speed (WPM), automatic
-/// updates, and start-on-login. Save writes into the shared <see cref="AppSettings"/> (and the
+/// activation mode, auto-stop on silence, the on-screen indicator, recent-dictation history,
+/// typing speed (WPM), automatic updates, and start-on-login. Save writes into the shared
+/// <see cref="AppSettings"/> (and the
 /// Run key) and raises <see cref="SettingsSaved"/>.
 /// </summary>
 internal sealed class SettingsPage : UserControl
@@ -24,11 +25,12 @@ internal sealed class SettingsPage : UserControl
     private readonly CheckBox _autoStopCheck = new() { Text = "Auto-stop after a pause in speech", AutoSize = true, Location = new Point(20, 282), ForeColor = Theme.TextPrimary };
     private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
     private readonly CheckBox _overlayCheck = new() { Text = "Show on-screen indicator while dictating", AutoSize = true, Location = new Point(20, 342), ForeColor = Theme.TextPrimary };
+    private readonly CheckBox _historyCheck = new() { Text = "Save recent dictation history (kept only on this PC)", AutoSize = true, Location = new Point(20, 376), ForeColor = Theme.TextPrimary };
     private readonly NumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly CheckBox _autoUpdateCheck = new() { Text = "Automatically check for updates on startup", AutoSize = true, Location = new Point(20, 412), ForeColor = Theme.TextPrimary };
+    private readonly CheckBox _autoUpdateCheck = new() { Text = "Automatically check for updates on startup", AutoSize = true, Location = new Point(20, 444), ForeColor = Theme.TextPrimary };
     private readonly TextBox _updateFolderBox = new() { BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(20, 512), ForeColor = Theme.TextPrimary };
-    private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓", Location = new Point(126, 558) };
+    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(20, 544), ForeColor = Theme.TextPrimary };
+    private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓", Location = new Point(126, 590) };
     private HotkeyDefinition _hotkey;
 
     public event Action? SettingsSaved;
@@ -71,6 +73,7 @@ internal sealed class SettingsPage : UserControl
         _autoStopCheck.Checked = _settings.AutoStopEnabled;
         _silenceUpDown.Value = (decimal)Math.Clamp(_settings.AutoStopSilenceSeconds, 0.3, 10.0);
         _overlayCheck.Checked = _settings.ShowOverlay;
+        _historyCheck.Checked = _settings.HistoryEnabled;
         _wpmUpDown.Value = (decimal)Math.Clamp(_settings.TypingSpeedWpm, 10, 300);
         _autoUpdateCheck.Checked = _settings.AutoUpdateEnabled;
         _updateFolderBox.Text = _settings.UpdateFeedFolder;
@@ -104,18 +107,18 @@ internal sealed class SettingsPage : UserControl
         _silenceUpDown.SetBounds(116, 306, 56, 24);
         var secondsLabel = new Label { Text = "seconds of silence", Location = new Point(178, 308), AutoSize = true, ForeColor = Theme.TextPrimary };
 
-        var wpmLabel = new Label { Text = "Typing speed:", Location = new Point(20, 376), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _wpmUpDown.SetBounds(108, 374, 60, 24);
-        var wpmSuffix = new Label { Text = "WPM  (used to estimate \"time saved\")", Location = new Point(176, 376), AutoSize = true, ForeColor = Theme.TextSecondary };
+        var wpmLabel = new Label { Text = "Typing speed:", Location = new Point(20, 408), AutoSize = true, ForeColor = Theme.TextPrimary };
+        _wpmUpDown.SetBounds(108, 406, 60, 24);
+        var wpmSuffix = new Label { Text = "WPM  (used to estimate \"time saved\")", Location = new Point(176, 408), AutoSize = true, ForeColor = Theme.TextSecondary };
 
-        var updateFolderLabel = new Label { Text = "Update folder:", Location = new Point(20, 446), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _updateFolderBox.SetBounds(110, 444, 280, 24);
-        var browseButton = new Button { Text = "Browse…", Location = new Point(396, 443), Size = new Size(64, 26), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
+        var updateFolderLabel = new Label { Text = "Update folder:", Location = new Point(20, 478), AutoSize = true, ForeColor = Theme.TextPrimary };
+        _updateFolderBox.SetBounds(110, 476, 280, 24);
+        var browseButton = new Button { Text = "Browse…", Location = new Point(396, 475), Size = new Size(64, 26), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
         browseButton.FlatAppearance.BorderColor = Theme.CardBorder;
         browseButton.Click += OnBrowseUpdateFolder;
-        var updateNote = new Label { Text = "Updates run an installer from this folder — only enable this for a folder you trust.", Location = new Point(20, 474), AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(440, 0) };
+        var updateNote = new Label { Text = "Updates run an installer from this folder — only enable this for a folder you trust.", Location = new Point(20, 506), AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(440, 0) };
 
-        var saveButton = new Button { Text = "Save", Location = new Point(20, 552), Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White };
+        var saveButton = new Button { Text = "Save", Location = new Point(20, 584), Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White };
         saveButton.FlatAppearance.BorderSize = 0;
         saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
         saveButton.Click += OnSave;
@@ -126,7 +129,7 @@ internal sealed class SettingsPage : UserControl
             hotkeyLabel, _hotkeyBox, _hintLabel,
             activationLabel, _activationCombo,
             _autoStopCheck, stopAfterLabel, _silenceUpDown, secondsLabel,
-            _overlayCheck, wpmLabel, _wpmUpDown, wpmSuffix,
+            _overlayCheck, _historyCheck, wpmLabel, _wpmUpDown, wpmSuffix,
             _autoUpdateCheck, updateFolderLabel, _updateFolderBox, browseButton, updateNote,
             _startupCheck, saveButton, _savedLabel,
         });
@@ -242,6 +245,7 @@ internal sealed class SettingsPage : UserControl
         _settings.AutoStopEnabled = _autoStopCheck.Checked;
         _settings.AutoStopSilenceSeconds = (double)_silenceUpDown.Value;
         _settings.ShowOverlay = _overlayCheck.Checked;
+        _settings.HistoryEnabled = _historyCheck.Checked;
         _settings.TypingSpeedWpm = (double)_wpmUpDown.Value;
         _settings.AutoUpdateEnabled = _autoUpdateCheck.Checked;
         _settings.UpdateFeedFolder = _updateFolderBox.Text.Trim();

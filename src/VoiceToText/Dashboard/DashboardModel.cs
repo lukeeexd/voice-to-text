@@ -70,6 +70,8 @@ public sealed class DashboardModel
         }
         // Fraction relative to the widest displayed row (computed AFTER "Other" exists,
         // so "Other" can never overflow the track).
+        // AppStat.Words is always > 0 in practice (StatsData.Record no-ops on words <= 0); the
+        // <= 0 guard below only defends against a StatsData deserialized with zero-word entries.
         long maxWords = rows.Count > 0 ? rows.Max(r => r.Words) : 1;
         TopApps = rows
             .Select(r => new AppBar(r.Name, r.Words, maxWords <= 0 ? 0 : (double)r.Words / maxWords))

@@ -269,9 +269,15 @@ internal static class SelfTest
         Pass("hero time saved matches format", tm.TimeSavedText == StatsFormat.Duration(t.EstimatedMinutesSaved(40)), tm.TimeSavedText);
         Pass("hero subtext has WPM", tm.TimeSavedSubtext.Contains("40"), tm.TimeSavedSubtext);
         Pass("avg words rounded (12)", tm.AvgWordsPerDictation == 12, $"={tm.AvgWordsPerDictation}");
+        var ar = new StatsData();
+        ar.Record(today, 10, 5, "X");
+        ar.Record(today, 11, 5, "X");
+        ar.Record(today, 11, 5, "X");
+        var arm = new DashboardModel(ar, today, 40);
+        Pass("avg rounds 32/3 -> 11", arm.AvgWordsPerDictation == 11, $"={arm.AvgWordsPerDictation}");
         Pass("speaking wpm rounded", tm.SpeakingWpm == (int)Math.Round(t.SpeakingWpm), $"={tm.SpeakingWpm}");
         Pass("best dictation text", tm.BestDictationText == "19 words", tm.BestDictationText ?? "null");
-        Pass("busiest day text", tm.BusiestDayText != null && tm.BusiestDayText.StartsWith("Jun 10"), tm.BusiestDayText ?? "null");
+        Pass("busiest day text", tm.BusiestDayText == "Jun 10 (19 words)", tm.BusiestDayText ?? "null");
         Pass("streak passthrough", tm.Streak == t.CurrentStreak(today), $"={tm.Streak}");
 
         log.AppendLine(allPass ? "ALL DASH TESTS PASSED" : "SOME DASH TESTS FAILED");

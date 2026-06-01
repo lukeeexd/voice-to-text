@@ -8,6 +8,9 @@ publish/
 # Installer output
 installer/Output/
 
+# Brainstorming visual companion scratch
+.superpowers/
+
 # Rider / VS
 .idea/
 .vs/

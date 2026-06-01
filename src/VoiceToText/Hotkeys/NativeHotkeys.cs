@@ -11,4 +11,8 @@ internal static partial class NativeHotkeys
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    // High bit of the result is set while the key is down. Used to detect hold-to-talk release.
+    [LibraryImport("user32.dll")]
+    public static partial short GetAsyncKeyState(int vKey);
 }

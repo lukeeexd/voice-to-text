@@ -360,6 +360,11 @@ internal static class SelfTest
             form.Refresh();           // synchronous WM_PAINT for the Dashboard page (hero/tiles/chart/apps)
             Application.DoEvents();
 
+            form.ShowPage(DashboardPageKind.TextRules);
+            Application.DoEvents();
+            form.Refresh();           // synchronous WM_PAINT for the Text rules page (grid + preview)
+            Application.DoEvents();
+
             form.Close();
 
             File.WriteAllText(outputPath, "DASH WINDOW OK (constructed, both pages shown + painted, closed)");

@@ -4,7 +4,7 @@ using VoiceToText.Stats;
 
 namespace VoiceToText.Dashboard;
 
-internal enum DashboardPageKind { Dashboard, Settings }
+internal enum DashboardPageKind { Dashboard, Settings, TextRules }
 
 /// <summary>
 /// The app's main window: a sidebar (brand + nav + version) on the left and a content host on
@@ -19,8 +19,10 @@ internal sealed class DashboardForm : Form
     private readonly Panel _content = new() { Dock = DockStyle.Fill, BackColor = Theme.WindowBg };
     private readonly NavButton _navDashboard = new("Dashboard") { Dock = DockStyle.Top };
     private readonly NavButton _navSettings = new("Settings") { Dock = DockStyle.Top };
+    private readonly NavButton _navTextRules = new("Text rules") { Dock = DockStyle.Top };
     private readonly DashboardPage _dashboardPage = new() { Dock = DockStyle.Fill };
     private readonly SettingsPage _settingsPage;
+    private readonly TextRulesPage _textRulesPage;
     private DashboardPageKind _active = DashboardPageKind.Dashboard;
 
     public event Action? SettingsSaved;
@@ -35,6 +37,7 @@ internal sealed class DashboardForm : Form
         _settingsPage.SettingsSaved += () => SettingsSaved?.Invoke();
         _settingsPage.HotkeyCaptureStarted += () => HotkeyCaptureStarted?.Invoke();
         _settingsPage.HotkeyCaptureEnded += () => HotkeyCaptureEnded?.Invoke();
+        _textRulesPage = new TextRulesPage(settings) { Dock = DockStyle.Fill, Visible = false };
         BuildUi(versionLabel);
     }
 
@@ -49,6 +52,7 @@ internal sealed class DashboardForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         DoubleBuffered = true;
 
+        _content.Controls.Add(_textRulesPage);
         _content.Controls.Add(_settingsPage);
         _content.Controls.Add(_dashboardPage);
 
@@ -75,8 +79,11 @@ internal sealed class DashboardForm : Form
 
         _navDashboard.Click += (_, _) => ShowPage(DashboardPageKind.Dashboard);
         _navSettings.Click += (_, _) => ShowPage(DashboardPageKind.Settings);
+        _navTextRules.Click += (_, _) => ShowPage(DashboardPageKind.TextRules);
 
         // Dock.Top stacks in reverse add-order, so the last added sits highest.
+        // Added first => lowest, giving visual order: brand, Dashboard, Settings, Text rules.
+        _sidebar.Controls.Add(_navTextRules);
         _sidebar.Controls.Add(_navSettings);
         _sidebar.Controls.Add(_navDashboard);
         _sidebar.Controls.Add(brand);
@@ -94,6 +101,7 @@ internal sealed class DashboardForm : Form
         _active = page;
         _dashboardPage.Visible = page == DashboardPageKind.Dashboard;
         _settingsPage.Visible = page == DashboardPageKind.Settings;
+        _textRulesPage.Visible = page == DashboardPageKind.TextRules;
         SetActiveStyles();
     }
 
@@ -101,6 +109,7 @@ internal sealed class DashboardForm : Form
     {
         _navDashboard.Active = _active == DashboardPageKind.Dashboard;
         _navSettings.Active = _active == DashboardPageKind.Settings;
+        _navTextRules.Active = _active == DashboardPageKind.TextRules;
     }
 
     /// <summary>Rebuild the view-model from the current stats snapshot and bind the dashboard page.</summary>

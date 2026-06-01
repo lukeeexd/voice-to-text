@@ -1,6 +1,7 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 using VoiceToText.Audio;
+using VoiceToText.Dashboard;
 using VoiceToText.Overlay;
 using VoiceToText.Settings;
 using VoiceToText.Stats;
@@ -206,6 +207,80 @@ internal static class SelfTest
         return allPass ? 0 : 1;
     }
 
+    /// <summary>Checks the pure dashboard view-model (series, top-apps, hero formatting). No UI.</summary>
+    public static int RunDashTest(string outputPath)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+
+        var today = new DateOnly(2026, 6, 10);
+
+        // --- Empty state ---
+        var empty = new DashboardModel(new StatsData(), today, 40);
+        Pass("empty: HasData false", !empty.HasData);
+        Pass("empty: 30-day series", empty.DailySeries.Count == 30, $"={empty.DailySeries.Count}");
+        Pass("empty: no apps", empty.TopApps.Count == 0);
+        Pass("empty: no best", empty.BestDictationText is null);
+        Pass("empty: dailyMax >= 1", empty.DailyMax >= 1, $"={empty.DailyMax}");
+
+        // --- Daily series window + zero-fill ---
+        var sd = new StatsData();
+        sd.Record(today, 10, 20, "Code");
+        sd.Record(today.AddDays(-2), 4, 8, "Code");
+        sd.Record(today.AddDays(-40), 999, 100, "Code"); // outside the 30-day window
+        var dm = new DashboardModel(sd, today, 40);
+        Pass("series count 30", dm.DailySeries.Count == 30);
+        Pass("series oldest->newest", dm.DailySeries[0].Date == today.AddDays(-29) && dm.DailySeries[29].Date == today);
+        Pass("today bucket", dm.DailySeries[29].Words == 10, $"={dm.DailySeries[29].Words}");
+        Pass("t-2 bucket", dm.DailySeries[27].Words == 4, $"={dm.DailySeries[27].Words}");
+        Pass("t-1 zero-filled", dm.DailySeries[28].Words == 0);
+        Pass("t-40 excluded => max 10", dm.DailyMax == 10, $"={dm.DailyMax}");
+
+        // --- Top apps + Other ---
+        var sa = new StatsData();
+        sa.Record(today, 70, 10, "A");
+        sa.Record(today, 60, 10, "B");
+        sa.Record(today, 50, 10, "C");
+        sa.Record(today, 40, 10, "D");
+        sa.Record(today, 30, 10, "E");
+        sa.Record(today, 20, 10, "F");
+        sa.Record(today, 10, 10, "G");
+        var am = new DashboardModel(sa, today, 40);
+        Pass("top apps = 5 + Other = 6 rows", am.TopApps.Count == 6, $"={am.TopApps.Count}");
+        Pass("Other aggregates F+G (30)", am.TopApps[5].Name == "Other" && am.TopApps[5].Words == 30, $"={am.TopApps[5].Words}");
+        Pass("apps sorted desc", am.TopApps[0].Words == 70 && am.TopApps[0].Name == "A");
+        Pass("largest fraction == 1.0", Math.Abs(am.TopApps[0].Fraction - 1.0) < 1e-9, $"={am.TopApps[0].Fraction:F3}");
+
+        // --- Duration formatting (three branches) ---
+        Pass("duration <1 min", StatsFormat.Duration(0.5) == "<1 min", StatsFormat.Duration(0.5));
+        Pass("duration minutes", StatsFormat.Duration(37) == "37 min", StatsFormat.Duration(37));
+        Pass("duration hours", StatsFormat.Duration(150) == "2.5 hrs", StatsFormat.Duration(150));
+
+        // --- Hero / tiles / records / streak ---
+        var t = new StatsData();
+        t.Record(today, 19, 12, "Code");
+        t.Record(today.AddDays(-1), 5, 4, "Chrome");
+        var tm = new DashboardModel(t, today, 40);
+        Pass("hero time saved matches format", tm.TimeSavedText == StatsFormat.Duration(t.EstimatedMinutesSaved(40)), tm.TimeSavedText);
+        Pass("hero subtext has WPM", tm.TimeSavedSubtext.Contains("40"), tm.TimeSavedSubtext);
+        Pass("avg words rounded (12)", tm.AvgWordsPerDictation == 12, $"={tm.AvgWordsPerDictation}");
+        Pass("speaking wpm rounded", tm.SpeakingWpm == (int)Math.Round(t.SpeakingWpm), $"={tm.SpeakingWpm}");
+        Pass("best dictation text", tm.BestDictationText == "19 words", tm.BestDictationText ?? "null");
+        Pass("busiest day text", tm.BusiestDayText != null && tm.BusiestDayText.StartsWith("Jun 10"), tm.BusiestDayText ?? "null");
+        Pass("streak passthrough", tm.Streak == t.CurrentStreak(today), $"={tm.Streak}");
+
+        log.AppendLine(allPass ? "ALL DASH TESTS PASSED" : "SOME DASH TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
+
     /// <summary>Checks the update decision logic (pure) and a simulated feed folder (I/O). No real install.</summary>
     public static int RunUpdateCheck(string outputPath, string? feedFolder)
     {
@@ -327,7 +402,7 @@ internal static class SelfTest
 
     /// <summary>
     /// Read Whisper.net's loaded runtime via reflection (the enum member names
-    /// aren't part of our compile surface). Tells us Vulkan vs Cpu.
+    /// are not part of our compile surface). Tells us Vulkan vs Cpu.
     /// </summary>
     private static string GetLoadedRuntime()
     {

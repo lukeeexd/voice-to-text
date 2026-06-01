@@ -9,6 +9,7 @@ using VoiceToText.Stats;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
 using VoiceToText.Update;
+using Whisper.net.Ggml;
 
 namespace VoiceToText.App;
 
@@ -36,6 +37,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private HotkeyDefinition _registeredHotkey;
     private AppState _state = AppState.Idle;
     private bool _busy;
+    private GgmlType _loadedModelType;
+    private bool _modelReloadPending;
     private int _updateInProgress; // 0/1, set/cleared via Interlocked
 
     private string VersionLabel => _updates.CurrentVersion is { } v ? $"v{v.ToString(3)}" : "";
@@ -46,6 +49,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _settings = AppSettings.Load();
         _registeredHotkey = _settings.Hotkey;
         _stt = new WhisperSttEngine(_settings.ModelType, _settings.Language);
+        _loadedModelType = _settings.ModelType;
         _updates = new UpdateService(_settings);
 
         // Clean leftover staged-update files on a normal start. On a post-update launch
@@ -221,6 +225,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             {
                 SetState(AppState.Idle);
                 _busy = false;
+                MaybeReloadModel();
             });
         }
     }
@@ -293,6 +298,19 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private void OnHotkeyCaptureEnded() => _hotkeys.Register(_registeredHotkey);
 
     // Re-apply settings after a Save on the Settings page (mirrors the old post-dialog logic).
+    /// <summary>Swap the STT engine to the newly-selected model once idle (never mid-dictation).</summary>
+    private void MaybeReloadModel()
+    {
+        if (!_modelReloadPending || _busy || _state != AppState.Idle)
+            return;
+        _modelReloadPending = false;
+        var old = _stt;
+        _loadedModelType = _settings.ModelType;
+        _stt = new WhisperSttEngine(_settings.ModelType, _settings.Language);
+        try { old.Dispose(); } catch { /* best effort */ }
+        _ = Task.Run(WarmUpAsync);
+    }
+
     private void OnSettingsSaved()
     {
         _hotkeys.Unregister();
@@ -318,6 +336,15 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         ApplyOverlaySetting();
+
+        if (_settings.ModelType != _loadedModelType)
+        {
+            _modelReloadPending = true;
+            MaybeReloadModel();
+        }
+
+        if (_settings.AutoUpdateEnabled && !string.IsNullOrWhiteSpace(_settings.UpdateFeedFolder))
+            _ = CheckForUpdatesAsync(userInitiated: false);
     }
 
     private async Task CheckForUpdatesAsync(bool userInitiated)

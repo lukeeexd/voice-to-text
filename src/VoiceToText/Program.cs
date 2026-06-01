@@ -1,4 +1,4 @@
-﻿using VoiceToText.App;
+using VoiceToText.App;
 using VoiceToText.Diagnostics;
 
 namespace VoiceToText;
@@ -7,7 +7,7 @@ internal static class Program
 {
     /// <summary>
     /// Entry point. Diagnostics ("--selftest", "--vadtest", "--updatecheck", "--widgettest",
-    /// "--statstest", "--dashtest") run headless and exit. Otherwise launches the tray app as
+    /// "--statstest", "--dashtest", "--dashwindow") run headless and exit. Otherwise launches the tray app as
     /// a single instance.
     /// "--postupdate &lt;ver&gt;" is passed by the update relauncher so the app can confirm the upgrade.
     /// </summary>
@@ -36,6 +36,9 @@ internal static class Program
 
         if (args.Length > 0 && args[0].Equals("--dashtest", StringComparison.OrdinalIgnoreCase))
             return SelfTest.RunDashTest("dashtest-output.txt");
+
+        if (args.Length > 0 && args[0].Equals("--dashwindow", StringComparison.OrdinalIgnoreCase))
+            return SelfTest.RunDashWindow("dashwindow-output.txt");
 
         // Single-instance guard. The name matches the installer's AppMutex so Inno's
         // Restart Manager reliably closes this instance during an update, and so the

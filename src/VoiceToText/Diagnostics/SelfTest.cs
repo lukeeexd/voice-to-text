@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Text;
 using VoiceToText.Audio;
 using VoiceToText.Dashboard;
@@ -285,6 +285,45 @@ internal static class SelfTest
         File.WriteAllText(outputPath, result);
         Console.WriteLine(result);
         return allPass ? 0 : 1;
+    }
+
+    /// <summary>Smoke test: construct the dashboard window, show both pages, force a synchronous
+    /// paint, and close. Catches construction/layout/OnPaint exceptions without a human. No asserts —
+    /// returns 0 if nothing threw, 1 otherwise.</summary>
+    public static int RunDashWindow(string outputPath)
+    {
+        try
+        {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            var settings = AppSettings.Load();
+            var stats = new StatsService();
+            using var form = new DashboardForm(settings, stats, "v-smoketest");
+
+            form.ShowPage(DashboardPageKind.Settings);
+            form.Show();
+            Application.DoEvents();
+            form.Refresh();           // synchronous WM_PAINT for the Settings page
+            Application.DoEvents();
+
+            form.ShowPage(DashboardPageKind.Dashboard);
+            Application.DoEvents();
+            form.Refresh();           // synchronous WM_PAINT for the Dashboard page (hero/tiles/chart/apps)
+            Application.DoEvents();
+
+            form.Close();
+
+            File.WriteAllText(outputPath, "DASH WINDOW OK (constructed, both pages shown + painted, closed)");
+            Console.WriteLine("DASH WINDOW OK");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            File.WriteAllText(outputPath, "ERROR: " + ex);
+            Console.WriteLine("ERROR: " + ex);
+            return 1;
+        }
     }
 
     /// <summary>Checks the update decision logic (pure) and a simulated feed folder (I/O). No real install.</summary>

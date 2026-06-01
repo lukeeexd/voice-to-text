@@ -78,8 +78,8 @@ internal sealed class DashboardPage : UserControl
         if (w <= 0 || Height <= 0) return;
 
         int y = pad;
-        _hero.SetBounds(x, y, w, 96);
-        y += 96 + 12;
+        _hero.SetBounds(x, y, w, 116);
+        y += 116 + 12;
 
         int tileW = (w - gap * 3) / 4;
         const int tileH = 64;

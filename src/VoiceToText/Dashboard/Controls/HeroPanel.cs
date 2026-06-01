@@ -47,9 +47,9 @@ internal sealed class HeroPanel : Control
         using var secondary = new SolidBrush(Theme.TextSecondary);
         using var gold = new SolidBrush(Theme.Gold);
 
-        g.DrawString("TIME SAVED", Theme.Caption, accent, 20, 16);
-        g.DrawString(_value, Theme.HeroNumber, primary, 18, 32);
-        g.DrawString(_subtext, Theme.Caption, secondary, 20, Height - 26);
+        g.DrawString("TIME SAVED", Theme.Caption, accent, 20, 18);
+        g.DrawString(_value, Theme.HeroNumber, primary, 18, 38);
+        g.DrawString(_subtext, Theme.Caption, secondary, 20, Height - 28);
 
         var streak = $"{_streak}-day streak";
         var size = g.MeasureString(streak, Theme.LabelBold);

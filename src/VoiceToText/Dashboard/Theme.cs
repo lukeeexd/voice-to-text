@@ -15,7 +15,7 @@ internal static class Theme
     public static readonly Color AccentLight   = Color.FromArgb(0x6A, 0xA0, 0xFF);
     public static readonly Color AccentDeep    = Color.FromArgb(0x27, 0x45, 0x7E);
     public static readonly Color HeroFrom      = Color.FromArgb(0x1D, 0x28, 0x40);
-    public static readonly Color HeroTo        = Color.FromArgb(0x19, 0x1B, 0x22);
+    public static readonly Color HeroTo        = Color.FromArgb(0x1B, 0x20, 0x30);
     public static readonly Color HeroBorder    = Color.FromArgb(0x2B, 0x35, 0x50);
     public static readonly Color NavActiveBg   = Color.FromArgb(0x22, 0x2B, 0x3D);
     public static readonly Color NavHoverBg    = Color.FromArgb(0x1B, 0x1C, 0x22);

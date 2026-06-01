@@ -44,6 +44,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         _postUpdateTarget = postUpdateTarget;
         _settings = AppSettings.Load();
+        _registeredHotkey = _settings.Hotkey;
         _stt = new WhisperSttEngine(_settings.ModelType, _settings.Language);
         _updates = new UpdateService(_settings);
 

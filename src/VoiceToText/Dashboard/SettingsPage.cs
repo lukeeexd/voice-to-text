@@ -49,6 +49,12 @@ internal sealed class SettingsPage : UserControl
         _savedLabel.Visible = false;
     }
 
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        if (Visible) _savedLabel.Visible = false;
+    }
+
     private void LoadFromSettings()
     {
         _hotkeyBox.Text = _hotkey.Describe();

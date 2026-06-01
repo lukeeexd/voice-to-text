@@ -1,10 +1,11 @@
 using System.Drawing;
+using VoiceToText.History;
 using VoiceToText.Settings;
 using VoiceToText.Stats;
 
 namespace VoiceToText.Dashboard;
 
-internal enum DashboardPageKind { Dashboard, Settings, TextRules }
+internal enum DashboardPageKind { Dashboard, Settings, TextRules, History }
 
 /// <summary>
 /// The app's main window: a sidebar (brand + nav + version) on the left and a content host on
@@ -20,16 +21,18 @@ internal sealed class DashboardForm : Form
     private readonly NavButton _navDashboard = new("Dashboard") { Dock = DockStyle.Top };
     private readonly NavButton _navSettings = new("Settings") { Dock = DockStyle.Top };
     private readonly NavButton _navTextRules = new("Text rules") { Dock = DockStyle.Top };
+    private readonly NavButton _navHistory = new("History") { Dock = DockStyle.Top };
     private readonly DashboardPage _dashboardPage = new() { Dock = DockStyle.Fill };
     private readonly SettingsPage _settingsPage;
     private readonly TextRulesPage _textRulesPage;
+    private readonly HistoryPage _historyPage;
     private DashboardPageKind _active = DashboardPageKind.Dashboard;
 
     public event Action? SettingsSaved;
     public event Action? HotkeyCaptureStarted;
     public event Action? HotkeyCaptureEnded;
 
-    public DashboardForm(AppSettings settings, StatsService stats, string versionLabel)
+    public DashboardForm(AppSettings settings, StatsService stats, HistoryService history, string versionLabel)
     {
         _settings = settings;
         _stats = stats;
@@ -38,6 +41,7 @@ internal sealed class DashboardForm : Form
         _settingsPage.HotkeyCaptureStarted += () => HotkeyCaptureStarted?.Invoke();
         _settingsPage.HotkeyCaptureEnded += () => HotkeyCaptureEnded?.Invoke();
         _textRulesPage = new TextRulesPage(settings) { Dock = DockStyle.Fill, Visible = false };
+        _historyPage = new HistoryPage(history, settings) { Dock = DockStyle.Fill, Visible = false };
         BuildUi(versionLabel);
     }
 
@@ -52,6 +56,7 @@ internal sealed class DashboardForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         DoubleBuffered = true;
 
+        _content.Controls.Add(_historyPage);
         _content.Controls.Add(_textRulesPage);
         _content.Controls.Add(_settingsPage);
         _content.Controls.Add(_dashboardPage);
@@ -80,9 +85,11 @@ internal sealed class DashboardForm : Form
         _navDashboard.Click += (_, _) => ShowPage(DashboardPageKind.Dashboard);
         _navSettings.Click += (_, _) => ShowPage(DashboardPageKind.Settings);
         _navTextRules.Click += (_, _) => ShowPage(DashboardPageKind.TextRules);
+        _navHistory.Click += (_, _) => ShowPage(DashboardPageKind.History);
 
         // Dock.Top stacks in reverse add-order, so the last added sits highest.
-        // Added first => lowest, giving visual order: brand, Dashboard, Settings, Text rules.
+        // Added first => lowest, giving visual order: brand, Dashboard, Settings, Text rules, History.
+        _sidebar.Controls.Add(_navHistory);
         _sidebar.Controls.Add(_navTextRules);
         _sidebar.Controls.Add(_navSettings);
         _sidebar.Controls.Add(_navDashboard);
@@ -102,6 +109,7 @@ internal sealed class DashboardForm : Form
         _dashboardPage.Visible = page == DashboardPageKind.Dashboard;
         _settingsPage.Visible = page == DashboardPageKind.Settings;
         _textRulesPage.Visible = page == DashboardPageKind.TextRules;
+        _historyPage.Visible = page == DashboardPageKind.History;
         SetActiveStyles();
     }
 
@@ -110,6 +118,7 @@ internal sealed class DashboardForm : Form
         _navDashboard.Active = _active == DashboardPageKind.Dashboard;
         _navSettings.Active = _active == DashboardPageKind.Settings;
         _navTextRules.Active = _active == DashboardPageKind.TextRules;
+        _navHistory.Active = _active == DashboardPageKind.History;
     }
 
     /// <summary>Rebuild the view-model from the current stats snapshot and bind the dashboard page.</summary>
@@ -132,6 +141,9 @@ internal sealed class DashboardForm : Form
     {
         base.OnActivated(e);
         RefreshData();
+        // The History page reloads on show; also refresh it on activation so a dictation made
+        // while it was already the visible page appears when the user returns to the window.
+        if (_active == DashboardPageKind.History) _historyPage.Reload();
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)

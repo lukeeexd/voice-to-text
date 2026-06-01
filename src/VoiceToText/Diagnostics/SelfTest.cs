@@ -391,7 +391,8 @@ internal static class SelfTest
 
             var settings = AppSettings.Load();
             var stats = new StatsService();
-            using var form = new DashboardForm(settings, stats, "v-smoketest");
+            var history = new HistoryService();
+            using var form = new DashboardForm(settings, stats, history, "v-smoketest");
 
             form.ShowPage(DashboardPageKind.Settings);
             form.Show();
@@ -407,6 +408,11 @@ internal static class SelfTest
             form.ShowPage(DashboardPageKind.TextRules);
             Application.DoEvents();
             form.Refresh();           // synchronous WM_PAINT for the Text rules page (grid + preview)
+            Application.DoEvents();
+
+            form.ShowPage(DashboardPageKind.History);
+            Application.DoEvents();
+            form.Refresh();           // synchronous WM_PAINT for the History page (list + empty state)
             Application.DoEvents();
 
             form.Close();

@@ -302,7 +302,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (_dashboard is null || _dashboard.IsDisposed)
         {
-            _dashboard = new DashboardForm(_settings, _stats, VersionLabel);
+            _dashboard = new DashboardForm(_settings, _stats, _history, VersionLabel);
             _dashboard.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
             _dashboard.HotkeyCaptureEnded += OnHotkeyCaptureEnded;
             _dashboard.SettingsSaved += OnSettingsSaved;

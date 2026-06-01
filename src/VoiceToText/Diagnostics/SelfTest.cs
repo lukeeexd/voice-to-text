@@ -2,6 +2,7 @@
 using System.Text;
 using VoiceToText.Audio;
 using VoiceToText.Dashboard;
+using VoiceToText.History;
 using VoiceToText.Overlay;
 using VoiceToText.Settings;
 using VoiceToText.Stats;
@@ -301,6 +302,37 @@ internal static class SelfTest
         return allPass ? 0 : 1;
     }
 
+
+    /// <summary>Checks the pure history store (prepend, cap at 50, clear). No UI, no I/O.</summary>
+    public static int RunHistoryTest(string outputPath)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+
+        var store = new HistoryStore();
+        store.Add(new HistoryEntry { Text = "first", Words = 1 });
+        store.Add(new HistoryEntry { Text = "second", Words = 1 });
+        Pass("newest first", store.Entries[0].Text == "second" && store.Entries[1].Text == "first", store.Entries[0].Text);
+
+        var capped = new HistoryStore();
+        for (var i = 0; i < 60; i++) capped.Add(new HistoryEntry { Text = $"e{i}", Words = 1 });
+        Pass("capped to 50", capped.Entries.Count == HistoryStore.MaxEntries, $"={capped.Entries.Count}");
+        Pass("cap keeps newest", capped.Entries[0].Text == "e59" && capped.Entries[49].Text == "e10", $"{capped.Entries[0].Text}..{capped.Entries[49].Text}");
+
+        capped.Clear();
+        Pass("clear empties", capped.Entries.Count == 0, $"={capped.Entries.Count}");
+
+        log.AppendLine(allPass ? "ALL HISTORY TESTS PASSED" : "SOME HISTORY TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
 
     /// <summary>Checks the pure text-rules engine (replacements + spoken commands). No UI.</summary>
     public static int RunTextRulesTest(string outputPath)

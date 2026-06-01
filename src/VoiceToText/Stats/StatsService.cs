@@ -57,23 +57,16 @@ public sealed class StatsService
         Save();
     }
 
-    /// <summary>Multi-line summary for the stopgap tray "Stats" view.</summary>
+    /// <summary>Multi-line summary (legacy text view; no longer shown in the UI but kept for reuse).</summary>
     public string Summary(double typingWpm)
     {
         if (Data.TotalDictations == 0)
             return "No dictations yet — press your hotkey and start talking.";
 
-        var saved = FormatDuration(Data.EstimatedMinutesSaved(typingWpm));
+        var saved = StatsFormat.Duration(Data.EstimatedMinutesSaved(typingWpm));
         var streak = Data.CurrentStreak(DateOnly.FromDateTime(DateTime.Now));
         return $"{Data.TotalWords:N0} words across {Data.TotalDictations:N0} dictations\n" +
                $"~{saved} of typing saved (at {typingWpm:N0} WPM)\n" +
                $"{streak}-day streak  ·  ~{Data.SpeakingWpm:N0} words/min speaking";
-    }
-
-    private static string FormatDuration(double minutes)
-    {
-        if (minutes < 1) return "<1 min";
-        if (minutes < 90) return $"{minutes:N0} min";
-        return $"{minutes / 60.0:N1} hrs";
     }
 }

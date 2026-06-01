@@ -9,6 +9,7 @@ internal sealed class BarChart : Control
 {
     private IReadOnlyList<DayBar> _series = Array.Empty<DayBar>();
     private long _max = 1;
+    private string _title = "Activity";
 
     public BarChart()
     {
@@ -17,10 +18,11 @@ internal sealed class BarChart : Control
         BackColor = Theme.WindowBg;
     }
 
-    public void SetData(IReadOnlyList<DayBar> series, long max)
+    public void SetData(IReadOnlyList<DayBar> series, long max, string title)
     {
         _series = series;
         _max = Math.Max(1, max);
+        _title = title;
         Invalidate();
     }
 
@@ -41,7 +43,7 @@ internal sealed class BarChart : Control
         }
 
         using var titleBrush = new SolidBrush(Theme.TextSecondary);
-        g.DrawString("Activity — last 30 days", Theme.Caption, titleBrush, 14, 12);
+        g.DrawString(_title, Theme.Caption, titleBrush, 14, 12);
 
         if (_series.Count == 0) return;
 

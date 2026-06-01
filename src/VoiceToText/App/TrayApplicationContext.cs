@@ -76,7 +76,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _hotkeys = new HotkeyManager(_window);
         _hotkeys.Pressed += OnHotkeyPressed;
+        _hotkeys.Released += OnHotkeyReleased;
         RegisterHotkey();
+        _hotkeys.HoldToTalk = _settings.HoldToTalk;
 
         _audio.SilenceDetected += OnSilenceDetected;
 
@@ -170,6 +172,15 @@ internal sealed class TrayApplicationContext : ApplicationContext
         if (_busy)
             return;
 
+        // Hold-to-talk: a press only starts; release (OnHotkeyReleased) stops.
+        if (_settings.HoldToTalk)
+        {
+            if (_state == AppState.Idle)
+                StartRecording();
+            return;
+        }
+
+        // Press-to-toggle.
         switch (_state)
         {
             case AppState.Idle:
@@ -181,11 +192,18 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
     }
 
+    private void OnHotkeyReleased()
+    {
+        if (_settings.HoldToTalk && _state == AppState.Recording && !_busy)
+            _ = StopAndTranscribeAsync();
+    }
+
     private void StartRecording()
     {
         try
         {
-            _audio.Start(_settings.InputDeviceId, _settings.AutoStopEnabled, _settings.AutoStopSilenceSeconds);
+            var autoStop = !_settings.HoldToTalk && _settings.AutoStopEnabled;
+            _audio.Start(_settings.InputDeviceId, autoStop, _settings.AutoStopSilenceSeconds);
             SetState(AppState.Recording);
         }
         catch (Exception ex)
@@ -338,6 +356,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
 
         ApplyOverlaySetting();
+        _hotkeys.HoldToTalk = _settings.HoldToTalk;
 
         if (_settings.ModelType != _loadedModelType)
         {

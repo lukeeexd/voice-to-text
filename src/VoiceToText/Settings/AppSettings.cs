@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VoiceToText.Hotkeys;
+using VoiceToText.TextProcessing;
 using Whisper.net.Ggml;
 
 namespace VoiceToText.Settings;
@@ -46,6 +47,12 @@ public sealed class AppSettings
     public string UpdateSkippedVersion { get; set; } = "";
 
     public GgmlType ModelType { get; set; } = GgmlType.LargeV3Turbo;
+
+    /// <summary>Custom find→replace rules applied to transcribed text before pasting.</summary>
+    public List<ReplacementRule> Replacements { get; set; } = new();
+
+    /// <summary>Turn spoken "new line"/"new paragraph" into line breaks.</summary>
+    public bool SpokenCommandsEnabled { get; set; } = true;
 
     [JsonIgnore]
     public HotkeyDefinition Hotkey

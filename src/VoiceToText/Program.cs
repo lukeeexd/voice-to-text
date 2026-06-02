@@ -62,6 +62,7 @@ internal static class Program
         if (args.Length > 0 && args[0].Equals("--postupdate", StringComparison.OrdinalIgnoreCase))
             postUpdateTarget = args.Length > 1 ? args[1] : "";
 
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
         ApplicationConfiguration.Initialize();
         using var context = new TrayApplicationContext(postUpdateTarget);
         Application.Run(context);

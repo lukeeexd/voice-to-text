@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Drawing;
+using System.Threading;
 using VoiceToText.Audio;
+using VoiceToText.Diagnostics;
 using VoiceToText.Dashboard;
 using VoiceToText.Hotkeys;
 using VoiceToText.Injection;
@@ -50,6 +52,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         _postUpdateTarget = postUpdateTarget;
         _settings = AppSettings.Load();
+        Application.ThreadException += OnUiThreadException;
+        AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         _registeredHotkey = _settings.Hotkey;
         _stt = new WhisperSttEngine(_settings.ModelType, _settings.Language);
         _loadedModelType = _settings.ModelType;
@@ -91,6 +95,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
         else
             _ = Task.Run(() => CheckForUpdatesAsync(userInitiated: false));
     }
+
+    private void OnUiThreadException(object? sender, ThreadExceptionEventArgs e)
+    {
+        Log.Error("Unhandled UI-thread exception", e.Exception);
+        try { ShowError("Something went wrong. Details are in the log (About → Open log folder)."); }
+        catch { /* never re-throw from the handler */ }
+    }
+
+    private void OnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
+        => Log.Error("Unhandled exception", e.ExceptionObject as Exception);
 
     private void CreateOverlay()
     {
@@ -538,6 +552,8 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         if (disposing)
         {
+            Application.ThreadException -= OnUiThreadException;
+            AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
             _hotkeys.Dispose();
             _trayIcon.Dispose();
             _icons.Dispose();

@@ -507,6 +507,11 @@ internal static class SelfTest
             form.Refresh();           // synchronous WM_PAINT for the History page (list + empty state)
             Application.DoEvents();
 
+            form.ShowPage(DashboardPageKind.About);
+            Application.DoEvents();
+            form.Refresh();           // synchronous WM_PAINT for the About page (card + actions)
+            Application.DoEvents();
+
             form.Close();
 
             File.WriteAllText(outputPath, "DASH WINDOW OK (constructed, all pages shown + painted, closed)");

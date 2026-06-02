@@ -367,6 +367,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _dashboard.HotkeyCaptureStarted += OnHotkeyCaptureStarted;
             _dashboard.HotkeyCaptureEnded += OnHotkeyCaptureEnded;
             _dashboard.SettingsSaved += OnSettingsSaved;
+            _dashboard.CheckForUpdatesRequested += () => _ = CheckForUpdatesAsync(userInitiated: true);
             _dashboard.FormClosed += (_, _) => _dashboard = null;
         }
 

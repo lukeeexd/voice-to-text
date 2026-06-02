@@ -13,11 +13,11 @@ internal sealed class DarkField : Panel
         SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint
                | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
         BackColor = Theme.CardBg;
-        Size = new Size(width, height);
         _inner = inner;
         _inner.BackColor = Theme.InputBg;
         _inner.ForeColor = Theme.TextPrimary;
         Controls.Add(_inner);
+        Size = new Size(width, height); // after _inner exists, so the OnLayout pass this triggers is safe
     }
 
     protected override void OnLayout(LayoutEventArgs e)

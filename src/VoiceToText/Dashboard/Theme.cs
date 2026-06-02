@@ -41,7 +41,7 @@ internal static class Theme
     public static void PaintField(Graphics g, Rectangle bounds, Color parentBg, int radius = 6)
     {
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.Clear(parentBg);
+        using (var bg = new SolidBrush(parentBg)) g.FillRectangle(bg, bounds); // fill only our bounds, don't stomp the surface
         var r = new Rectangle(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
         using var path = RoundedRect(r, radius);
         using var fill = new SolidBrush(InputBg);

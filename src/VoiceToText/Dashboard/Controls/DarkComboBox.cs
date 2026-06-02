@@ -28,8 +28,10 @@ internal sealed class DarkComboBox : ComboBox
     protected override void OnSizeChanged(EventArgs e)
     {
         base.OnSizeChanged(e);
+        var old = Region;
         using var path = Theme.RoundedRect(new Rectangle(0, 0, Width, Height), Radius);
         Region = new Region(path);
+        old?.Dispose(); // don't leak the previous HRGN on each resize
     }
 
     protected override void OnDrawItem(DrawItemEventArgs e)
@@ -62,7 +64,7 @@ internal sealed class DarkComboBox : ComboBox
 
         // Cover the native dropdown button strip with InputBg.
         using (var fill = new SolidBrush(Theme.InputBg))
-            g.FillRectangle(fill, new Rectangle(Width - ButtonW, 1, ButtonW - 1, Height - 2));
+            g.FillRectangle(fill, new Rectangle(Width - ButtonW, 1, ButtonW, Height - 2));
 
         // Rounded border.
         using (var path = Theme.RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), Radius))

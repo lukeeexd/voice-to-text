@@ -23,7 +23,6 @@ internal sealed class DarkNumericUpDown : Control
         SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint
                | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
         BackColor = Theme.CardBg;
-        Size = new Size(96, 30);
 
         _text = new TextBox
         {
@@ -34,6 +33,7 @@ internal sealed class DarkNumericUpDown : Control
         _text.Leave += (_, _) => CommitText();
         _text.KeyDown += (_, e) => { if (e.KeyCode == Keys.Enter) { CommitText(); e.SuppressKeyPress = true; } };
         Controls.Add(_text);
+        Size = new Size(96, 30); // after _text exists, so the OnLayout pass this triggers is safe
     }
 
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -85,6 +85,13 @@ internal sealed class DarkNumericUpDown : Control
         base.OnMouseDown(e);
         if (Enabled && e.X >= Width - StepperW)
             SetValue(_value + (e.Y < Height / 2 ? _increment : -_increment), raise: true);
+    }
+
+    protected override void OnEnabledChanged(EventArgs e)
+    {
+        base.OnEnabledChanged(e);
+        _text.Enabled = Enabled; // grey + block the inner field too, not just the arrows
+        Invalidate();
     }
 
     protected override void OnPaint(PaintEventArgs e)

@@ -20,18 +20,18 @@ internal sealed class SettingsPage : UserControl
     private readonly AppSettings _settings;
     private const int CardWidth = 700;
 
-    private readonly ComboBox _deviceCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
-    private readonly ComboBox _modelCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
-    private readonly ComboBox _activationCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
-    private readonly TextBox _hotkeyBox = new() { ReadOnly = true, Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
+    private readonly DarkComboBox _deviceCombo = new();
+    private readonly DarkComboBox _modelCombo = new();
+    private readonly DarkComboBox _activationCombo = new();
+    private readonly TextBox _hotkeyBox = new() { ReadOnly = true, Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center, BorderStyle = BorderStyle.None };
     private readonly Label _hintLabel = new() { AutoSize = false, ForeColor = Theme.TextSecondary, Font = Theme.Caption };
     private readonly ToggleSwitch _autoStopCheck = new();
-    private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
+    private readonly DarkNumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M };
     private readonly ToggleSwitch _overlayCheck = new();
     private readonly ToggleSwitch _historyCheck = new();
-    private readonly NumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
+    private readonly DarkNumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5 };
     private readonly ToggleSwitch _autoUpdateCheck = new();
-    private readonly TextBox _updateFolderBox = new() { BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
+    private readonly TextBox _updateFolderBox = new() { BorderStyle = BorderStyle.None };
     private readonly ToggleSwitch _startupCheck = new();
     private readonly Button _saveButton = new() { Text = "Save", Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White, Enabled = false };
     private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓" };
@@ -95,31 +95,30 @@ internal sealed class SettingsPage : UserControl
 
     private void BuildUi()
     {
-        // Controls that sit in rows: size them; combos keep the dark owner-draw.
-        _deviceCombo.Width = 300; _deviceCombo.DrawItem += OnComboDrawItem;
-        _modelCombo.Width = 300; _modelCombo.DrawItem += OnComboDrawItem;
-        _activationCombo.Width = 180; _activationCombo.DrawItem += OnComboDrawItem;
+        // Controls that sit in rows: size them; DarkComboBox self-draws.
+        _deviceCombo.Width = 300;
+        _modelCombo.Width = 300;
+        _activationCombo.Width = 180;
         _activationCombo.Items.AddRange(new object[] { "Press to toggle", "Hold to talk" });
         _activationCombo.SelectedIndexChanged += (_, _) => UpdateAutoStopEnabled();
-        _hotkeyBox.Size = new Size(240, 26);
         _hotkeyBox.GotFocus += (_, _) => { _hotkeyBox.Text = "Press a key or combination…"; HotkeyCaptureStarted?.Invoke(); };
         _hotkeyBox.LostFocus += (_, _) => { _hotkeyBox.Text = _hotkey.Describe(); HotkeyCaptureEnded?.Invoke(); };
-        _silenceUpDown.Width = 56;
-        _wpmUpDown.Width = 64;
+        _silenceUpDown.Width = 78;
+        _wpmUpDown.Width = 78;
         _autoStopCheck.CheckedChanged += (_, _) => UpdateAutoStopEnabled();
 
         // Composite controls (numeric + unit / textbox + browse) used as a single "control" in a row.
         var silence = RowComposite(_silenceUpDown, "seconds");
         var wpm = RowComposite(_wpmUpDown, "WPM");
 
-        var browseButton = new Button { Text = "Browse…", Size = new Size(72, 26), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
-        browseButton.FlatAppearance.BorderColor = Theme.CardBorder;
+        var browseButton = new Button { Text = "Browse…", Size = new Size(72, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
+        browseButton.FlatAppearance.BorderColor = Theme.InputBorder;
         browseButton.Click += OnBrowseUpdateFolder;
-        _updateFolderBox.Size = new Size(232, 24);
-        var folder = new Panel { BackColor = Theme.CardBg, Height = 26, Width = _updateFolderBox.Width + 8 + browseButton.Width };
-        _updateFolderBox.Location = new Point(0, 1);
-        browseButton.Location = new Point(_updateFolderBox.Width + 8, 0);
-        folder.Controls.Add(_updateFolderBox);
+        var folderField = new DarkField(_updateFolderBox, 232);
+        var folder = new Panel { BackColor = Theme.CardBg, Height = 30, Width = folderField.Width + 8 + browseButton.Width };
+        folderField.Location = new Point(0, 0);
+        browseButton.Location = new Point(folderField.Width + 8, 0);
+        folder.Controls.Add(folderField);
         folder.Controls.Add(browseButton);
         var updateWarning = new Label { Text = "⚠ Runs an installer from this folder — only enable for a folder you trust.", ForeColor = Theme.Warning, Font = Theme.Caption };
 
@@ -127,7 +126,8 @@ internal sealed class SettingsPage : UserControl
         var dictation = new SectionCard("Dictation") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
         dictation.AddRow("Microphone", _deviceCombo);
         dictation.AddRow("Speech model", _modelCombo);
-        dictation.AddRow("Dictation hotkey", _hotkeyBox, _hintLabel);
+        var hotkeyField = new DarkField(_hotkeyBox, 240);
+        dictation.AddRow("Dictation hotkey", hotkeyField, _hintLabel);
         dictation.AddRow("Activation", _activationCombo);
         dictation.AddRow("Auto-stop after a pause in speech", _autoStopCheck);
         dictation.AddRow("Stop after", silence);
@@ -205,23 +205,6 @@ internal sealed class SettingsPage : UserControl
         bool hold = _activationCombo.SelectedIndex == 1;
         _autoStopCheck.Enabled = !hold;
         _silenceUpDown.Enabled = !hold && _autoStopCheck.Checked;
-    }
-
-    private void OnComboDrawItem(object? sender, DrawItemEventArgs e)
-    {
-        var combo = (ComboBox)sender!;
-        e.DrawBackground();
-        if (e.Index >= 0)
-        {
-            var selected = (e.State & DrawItemState.Selected) != 0;
-            using var backBrush = new SolidBrush(selected ? Theme.NavActiveBg : Theme.CardBg);
-            e.Graphics.FillRectangle(backBrush, e.Bounds);
-            using var textBrush = new SolidBrush(selected ? Theme.NavActiveText : Theme.TextPrimary);
-            using var format = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
-            var textRect = new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 6, e.Bounds.Height);
-            e.Graphics.DrawString(combo.GetItemText(combo.Items[e.Index]), e.Font ?? Font, textBrush, textRect, format);
-        }
-        e.DrawFocusRectangle();
     }
 
     private void LoadDevices()

@@ -1,0 +1,31 @@
+using System.Drawing;
+
+namespace VoiceToText.Dashboard.Controls;
+
+/// <summary>A rounded dark input field that wraps one borderless child control (e.g. a TextBox).</summary>
+internal sealed class DarkField : Panel
+{
+    private const int Radius = 6;
+    private readonly Control _inner;
+
+    public DarkField(Control inner, int width, int height = 30)
+    {
+        SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint
+               | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+        BackColor = Theme.CardBg;
+        Size = new Size(width, height);
+        _inner = inner;
+        _inner.BackColor = Theme.InputBg;
+        _inner.ForeColor = Theme.TextPrimary;
+        Controls.Add(_inner);
+    }
+
+    protected override void OnLayout(LayoutEventArgs e)
+    {
+        base.OnLayout(e);
+        int ih = _inner.PreferredSize.Height > 0 ? _inner.PreferredSize.Height : _inner.Height;
+        _inner.SetBounds(10, Math.Max(1, (Height - ih) / 2), Math.Max(10, Width - 20), ih);
+    }
+
+    protected override void OnPaint(PaintEventArgs e) => Theme.PaintField(e.Graphics, ClientRectangle, BackColor, Radius);
+}

@@ -25,6 +25,8 @@ internal static class Theme
     public static readonly Color TextMuted     = Color.FromArgb(0x54, 0x56, 0x5F);
     public static readonly Color Gold          = Color.FromArgb(0xFF, 0xCE, 0x6B);
     public static readonly Color Warning       = Color.FromArgb(0xE0, 0x9A, 0x3A);
+    public static readonly Color InputBg     = Color.FromArgb(0x2A, 0x2C, 0x34);
+    public static readonly Color InputBorder = Color.FromArgb(0x3A, 0x3D, 0x47);
 
     public static readonly Font HeroNumber = new("Segoe UI", 30f, FontStyle.Bold);
     public static readonly Font TileNumber = new("Segoe UI", 18f, FontStyle.Bold);
@@ -34,6 +36,19 @@ internal static class Theme
     public static readonly Font Heading    = new("Segoe UI", 14f, FontStyle.Bold);
     public static readonly Font Brand      = new("Segoe UI", 11.5f, FontStyle.Bold);
     public static readonly Font Empty      = new("Segoe UI", 11f, FontStyle.Regular);
+
+    /// <summary>Paint a rounded dark input field: clear to the parent bg, fill InputBg, stroke InputBorder.</summary>
+    public static void PaintField(Graphics g, Rectangle bounds, Color parentBg, int radius = 6)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.Clear(parentBg);
+        var r = new Rectangle(bounds.X, bounds.Y, bounds.Width - 1, bounds.Height - 1);
+        using var path = RoundedRect(r, radius);
+        using var fill = new SolidBrush(InputBg);
+        using var pen = new Pen(InputBorder);
+        g.FillPath(fill, path);
+        g.DrawPath(pen, path);
+    }
 
     /// <summary>A rounded-rectangle path. Caller disposes (use `using`).</summary>
     public static GraphicsPath RoundedRect(Rectangle r, int radius)

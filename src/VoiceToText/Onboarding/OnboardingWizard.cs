@@ -1,6 +1,7 @@
 using System.Drawing;
 using VoiceToText.Audio;
 using VoiceToText.Dashboard;
+using VoiceToText.Dashboard.Controls;
 using VoiceToText.Hotkeys;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
@@ -35,8 +36,8 @@ internal sealed class OnboardingWizard : Form
     private readonly Label _doneBody = new() { AutoSize = false, Size = new Size(470, 110), ForeColor = Theme.TextSecondary, Font = Theme.NavItem };
     private readonly Label _doneStatus = new() { AutoSize = false, Size = new Size(470, 40), Font = Theme.Caption };
 
-    private readonly Button _back = new() { Text = "Back", FlatStyle = FlatStyle.Flat, Size = new Size(90, 32), BackColor = Theme.CardBg, ForeColor = Theme.NavActiveText };
-    private readonly Button _next = new() { Text = "Next", FlatStyle = FlatStyle.Flat, Size = new Size(110, 32), BackColor = Theme.Accent, ForeColor = Color.White };
+    private readonly DarkButton _back = new() { Variant = DarkButtonVariant.Secondary, Text = "Back", Size = new Size(90, 32) };
+    private readonly DarkButton _next = new() { Variant = DarkButtonVariant.Primary, Text = "Next", Size = new Size(110, 32) };
     private readonly LinkLabel _skip = new() { Text = "Skip", AutoSize = true, LinkColor = Theme.TextMuted, ActiveLinkColor = Theme.AccentLight, Font = Theme.Caption };
 
     /// <summary>Raised after the wizard saves the chosen mic + hotkey; the host re-registers the hotkey.</summary>
@@ -61,12 +62,9 @@ internal sealed class OnboardingWizard : Form
         _panels = new[] { BuildWelcome(), BuildMic(), BuildHotkey(), BuildDone() };
         foreach (var p in _panels) { p.Dock = DockStyle.Fill; p.Visible = false; _content.Controls.Add(p); }
 
-        _back.FlatAppearance.BorderColor = Theme.CardBorder;
         _back.Location = new Point(24, 354);
         _back.Click += (_, _) => ShowStep(_step - 1);
 
-        _next.FlatAppearance.BorderSize = 0;
-        _next.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
         _next.Location = new Point(422, 354);
         _next.Click += (_, _) => { if (_step < StepCount - 1) ShowStep(_step + 1); else Finish(); };
 

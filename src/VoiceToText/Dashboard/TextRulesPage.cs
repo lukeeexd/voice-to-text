@@ -1,4 +1,5 @@
 using System.Drawing;
+using VoiceToText.Dashboard.Controls;
 using VoiceToText.Settings;
 using VoiceToText.TextProcessing;
 
@@ -18,7 +19,7 @@ internal sealed class TextRulesPage : UserControl
     private readonly Label _tryLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Text = "TRY IT", Font = Theme.Caption };
     private readonly TextBox _previewInput = new() { BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle, Text = "i pushed to github new line all tests pass" };
     private readonly TextBox _previewOutput = new() { BackColor = Theme.CardBg, ForeColor = Color.FromArgb(0x9B, 0xE6, 0xA8), BorderStyle = BorderStyle.FixedSingle, ReadOnly = true, Multiline = true };
-    private readonly Button _saveButton = new() { Text = "Save", Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White };
+    private readonly DarkButton _saveButton = new() { Variant = DarkButtonVariant.Primary, Text = "Save", Size = new Size(96, 32) };
     private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Saved ✓" };
 
     public TextRulesPage(AppSettings settings)
@@ -39,8 +40,6 @@ internal sealed class TextRulesPage : UserControl
         _grid.RowsRemoved += (_, _) => UpdatePreview();
         _previewInput.TextChanged += (_, _) => UpdatePreview();
 
-        _saveButton.FlatAppearance.BorderSize = 0;
-        _saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
         _saveButton.Click += OnSave;
 
         Controls.AddRange(new Control[]

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing;
+using VoiceToText.Dashboard.Controls;
 using VoiceToText.Diagnostics;
 using VoiceToText.Settings;
 
@@ -24,9 +25,9 @@ internal sealed class AboutPage : UserControl
         Font = Theme.Caption, Text = "Voice to Text — local, offline dictation.",
     };
     private readonly Panel _card = new() { BackColor = Theme.CardBg };
-    private readonly Button _check = MakeButton("Check for updates", primary: true);
-    private readonly Button _openLog = MakeButton("Open log folder", primary: false);
-    private readonly Button _copy = MakeButton("Copy diagnostics", primary: false);
+    private readonly DarkButton _check = MakeButton("Check for updates", primary: true);
+    private readonly DarkButton _openLog = MakeButton("Open log folder", primary: false);
+    private readonly DarkButton _copy = MakeButton("Copy diagnostics", primary: false);
     private readonly Label _footer = new()
     {
         AutoSize = true, ForeColor = Theme.TextMuted, Font = Theme.Caption,
@@ -47,15 +48,13 @@ internal sealed class AboutPage : UserControl
         Controls.AddRange(new Control[] { _title, _subtitle, _card, _check, _openLog, _copy, _footer });
     }
 
-    private static Button MakeButton(string text, bool primary) => new()
+    private static DarkButton MakeButton(string text, bool primary) => new()
     {
+        Variant = primary ? DarkButtonVariant.Primary : DarkButtonVariant.Secondary,
         Text = text,
         AutoSize = false,
         Size = new Size(132, 30),
-        FlatStyle = FlatStyle.Flat,
         Font = Theme.Caption,
-        BackColor = primary ? Theme.Accent : Theme.CardBg,
-        ForeColor = primary ? Color.White : Theme.NavActiveText,
     };
 
     protected override void OnVisibleChanged(EventArgs e)

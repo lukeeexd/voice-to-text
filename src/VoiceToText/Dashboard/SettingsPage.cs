@@ -33,7 +33,7 @@ internal sealed class SettingsPage : UserControl
     private readonly ToggleSwitch _autoUpdateCheck = new();
     private readonly TextBox _updateFolderBox = new() { BorderStyle = BorderStyle.None };
     private readonly ToggleSwitch _startupCheck = new();
-    private readonly Button _saveButton = new() { Text = "Save", Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White, Enabled = false };
+    private readonly DarkButton _saveButton = new() { Variant = DarkButtonVariant.Primary, Text = "Save", Size = new Size(96, 32), Enabled = false };
     private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓" };
     private readonly Label _unsavedLabel = new() { AutoSize = true, ForeColor = Theme.Warning, Visible = false, Text = "● Unsaved changes" };
     private string _baseline = "";
@@ -112,8 +112,7 @@ internal sealed class SettingsPage : UserControl
         var silence = RowComposite(_silenceUpDown, "seconds");
         var wpm = RowComposite(_wpmUpDown, "WPM");
 
-        var browseButton = new Button { Text = "Browse…", Size = new Size(72, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
-        browseButton.FlatAppearance.BorderColor = Theme.InputBorder;
+        var browseButton = new DarkButton { Variant = DarkButtonVariant.Secondary, Text = "Browse…", Size = new Size(84, 30) };
         browseButton.Click += OnBrowseUpdateFolder;
         var folderField = new DarkField(_updateFolderBox, 232);
         var folder = new Panel { BackColor = Theme.CardBg, Height = 30, Width = folderField.Width + 8 + browseButton.Width };
@@ -183,8 +182,6 @@ internal sealed class SettingsPage : UserControl
         scroll.ClientSizeChanged += (_, _) => LayoutCards();
         LayoutCards();
 
-        _saveButton.FlatAppearance.BorderSize = 0;
-        _saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
         _saveButton.Click += OnSave;
         _saveButton.Location = new Point(24, 12);
         _savedLabel.Location = new Point(130, 18);

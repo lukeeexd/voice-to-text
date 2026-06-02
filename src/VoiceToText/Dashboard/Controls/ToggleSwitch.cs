@@ -62,7 +62,7 @@ internal sealed class ToggleSwitch : Control
         int top = (Height - h) / 2;
         var track = new Rectangle(0, top, Math.Max(2, Width - 1), h - 1);
 
-        Color trackColor = !Enabled ? Theme.CardBorder : _checked ? Theme.Accent : OffTrack;
+        Color trackColor = !Enabled ? Color.FromArgb(0x44, 0x47, 0x52) : _checked ? Theme.Accent : OffTrack;
         using (var path = Theme.RoundedRect(track, (h - 1) / 2))
         using (var fill = new SolidBrush(trackColor))
             g.FillPath(fill, path);

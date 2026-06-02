@@ -195,7 +195,7 @@ internal sealed class SettingsPage : UserControl
         var panel = new Panel { BackColor = Theme.CardBg, Height = Math.Max(control.Height, 20) };
         panel.Controls.Add(control);
         panel.Controls.Add(label);
-        panel.Width = control.Width + 6 + 70;
+        panel.Width = control.Width + 6 + label.PreferredWidth + 4;
         return panel;
     }
 

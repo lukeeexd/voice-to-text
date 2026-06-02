@@ -47,7 +47,7 @@ internal sealed class SectionCard : Control
     public void AddRow(string name, Control control, Label? hint = null)
     {
         const int topH = 38;
-        int rowW = Math.Max(40, Content.ClientSize.Width);
+        int rowW = Math.Max(40, Width - PadX * 2); // card Width is honored; Content is AutoSize so its ClientSize is ~0 until rows exist
         int rowH = topH + (hint is null ? 0 : 22);
         var row = new Panel { BackColor = Theme.CardBg, Width = rowW, Height = rowH, Margin = Padding.Empty };
 

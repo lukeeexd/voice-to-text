@@ -334,6 +334,47 @@ internal static class SelfTest
         return allPass ? 0 : 1;
     }
 
+    /// <summary>Checks the rolling LogWriter (rotation at the cap, never throws). No app state.</summary>
+    public static int RunLogTest(string outputPath)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+
+        var dir = Path.Combine(Path.GetTempPath(), "vtt-logtest");
+        try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { }
+        var file = Path.Combine(dir, "t.log");
+
+        var w = new LogWriter(file, maxBytes: 1000);
+        w.Write("INFO", "first line", null);
+        Pass("writes + creates file", File.Exists(file));
+        Pass("no rollover under cap", !File.Exists(file + ".1"));
+
+        for (var i = 0; i < 200; i++) w.Write("INFO", $"padding line {i} ........................", null);
+        Pass("rolled over past cap", File.Exists(file + ".1"), "expected t.log.1");
+        Pass("main file reset below cap", new FileInfo(file).Length <= 1000 + 512, $"={new FileInfo(file).Length}");
+
+        var threw = false;
+        try { w.Write("ERROR", "boom", new InvalidOperationException("x")); } catch { threw = true; }
+        Pass("error write does not throw", !threw);
+
+        var threw2 = false;
+        try { new LogWriter(@"Z:\nope\does\not\exist\t.log").Write("INFO", "x", null); } catch { threw2 = true; }
+        Pass("unwritable path does not throw", !threw2);
+
+        try { Directory.Delete(dir, true); } catch { }
+
+        log.AppendLine(allPass ? "ALL LOG TESTS PASSED" : "SOME LOG TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
+
     /// <summary>Checks the pure text-rules engine (replacements + spoken commands). No UI.</summary>
     public static int RunTextRulesTest(string outputPath)
     {

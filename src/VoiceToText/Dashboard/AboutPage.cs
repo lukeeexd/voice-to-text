@@ -12,13 +12,11 @@ namespace VoiceToText.Dashboard;
 /// </summary>
 internal sealed class AboutPage : UserControl
 {
-    private static readonly Font HeadingFont = new("Segoe UI", 14f, FontStyle.Bold);
-
     private readonly AppSettings _settings;
     private readonly Label _title = new()
     {
         Text = "About", AutoSize = true, Location = new Point(20, 16),
-        ForeColor = Theme.TextPrimary, Font = HeadingFont,
+        ForeColor = Theme.TextPrimary, Font = Theme.Heading,
     };
     private readonly Label _subtitle = new()
     {

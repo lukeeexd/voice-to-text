@@ -67,7 +67,7 @@ internal sealed class SettingsPage : UserControl
     protected override void OnVisibleChanged(EventArgs e)
     {
         base.OnVisibleChanged(e);
-        if (Visible) _savedLabel.Visible = false;
+        if (Visible) { _savedLabel.Visible = false; UpdateDirty(); }
     }
 
     private void LoadFromSettings()

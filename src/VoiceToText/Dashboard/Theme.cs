@@ -31,6 +31,7 @@ internal static class Theme
     public static readonly Font LabelBold  = new("Segoe UI", 10f, FontStyle.Bold);
     public static readonly Font Caption    = new("Segoe UI", 8.5f, FontStyle.Regular);
     public static readonly Font NavItem    = new("Segoe UI", 10.5f, FontStyle.Regular);
+    public static readonly Font Heading    = new("Segoe UI", 14f, FontStyle.Bold);
     public static readonly Font Brand      = new("Segoe UI", 11.5f, FontStyle.Bold);
     public static readonly Font Empty      = new("Segoe UI", 11f, FontStyle.Regular);
 

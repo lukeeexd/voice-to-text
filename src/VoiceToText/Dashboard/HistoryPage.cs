@@ -11,8 +11,6 @@ namespace VoiceToText.Dashboard;
 /// </summary>
 internal sealed class HistoryPage : UserControl
 {
-    private static readonly Font HeadingFont = new("Segoe UI", 14f, FontStyle.Bold);
-
     private readonly HistoryService _history;
     private readonly AppSettings _settings;
 
@@ -22,7 +20,7 @@ internal sealed class HistoryPage : UserControl
         AutoSize = true,
         Location = new Point(20, 16),
         ForeColor = Theme.TextPrimary,
-        Font = HeadingFont,
+        Font = Theme.Heading,
     };
     private readonly Label _subtitle = new()
     {

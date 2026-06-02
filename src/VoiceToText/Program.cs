@@ -53,7 +53,7 @@ internal static class Program
         if (args.Length > 0 && args[0].Equals("--abouttest", StringComparison.OrdinalIgnoreCase))
             return SelfTest.RunAboutTest("abouttest-output.txt");
 
-        Diagnostics.Log.Info("Voice to Text starting.");
+        Diagnostics.Log.Info($"Voice to Text v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)} starting.");
 
         // Single-instance guard. The name matches the installer's AppMutex so Inno's
         // Restart Manager reliably closes this instance during an update, and so the

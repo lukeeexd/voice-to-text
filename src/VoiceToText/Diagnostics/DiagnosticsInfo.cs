@@ -63,13 +63,22 @@ public sealed class DiagnosticsInfo
         var gpu = GpuInfo.PrimaryGpuName();
         var modelType = settings.ModelType;
         var model = ModelOption.All.FirstOrDefault(m => m.Type == modelType)?.ToString() ?? modelType.ToString();
-        var modelPath = ModelManager.GetModelPath(modelType);
+        var realPath = ModelManager.GetModelPath(modelType);
         long size = 0;
-        try { if (File.Exists(modelPath)) size = new FileInfo(modelPath).Length; } catch { }
+        try { if (File.Exists(realPath)) size = new FileInfo(realPath).Length; } catch { }
+        var modelPath = CollapseAppData(realPath); // hide the Windows username when copied to clipboard
         return new DiagnosticsInfo(
             version, runtime, gpu, model, modelPath, size,
             RuntimeInformation.OSDescription,
             RuntimeInformation.FrameworkDescription,
             RuntimeInformation.OSArchitecture.ToString());
+    }
+
+    private static string CollapseAppData(string path)
+    {
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return appData.Length > 0 && path.StartsWith(appData, StringComparison.OrdinalIgnoreCase)
+            ? "%APPDATA%" + path[appData.Length..]
+            : path;
     }
 }

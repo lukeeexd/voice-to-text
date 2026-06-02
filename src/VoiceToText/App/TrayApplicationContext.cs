@@ -164,6 +164,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             if (_state != AppState.Recording || _busy)
                 return;
             _busy = true;
+            SetState(AppState.Idle); // reflect Idle now; _busy guards re-entry during async cleanup
             Log.Error("Microphone lost during recording", ex);
             ShowError("Microphone disconnected — recording stopped.");
             _ = ResetAfterFailureAsync();
@@ -174,11 +175,14 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         try { await _audio.StopAndGetSamplesAsync().ConfigureAwait(false); }
         catch (Exception ex) { Log.Error("Cleanup after mic loss failed", ex); }
-        _window.BeginInvoke(() =>
-        {
-            SetState(AppState.Idle);
-            _busy = false;
-        });
+        if (_window.IsHandleCreated)
+            _window.BeginInvoke(() =>
+            {
+                SetState(AppState.Idle);
+                _busy = false;
+            });
+        else
+            _busy = false; // window gone (app exiting) — clear the guard so dictation never sticks
     }
 
     private ContextMenuStrip BuildMenu()
@@ -346,7 +350,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
 
             await _stt.LoadAsync().ConfigureAwait(false);
-            Log.Info($"Speech model ready ({_settings.ModelType}).");
+            Log.Info($"Speech model ready ({_settings.ModelType}), runtime: {RuntimeProbe.LoadedRuntime()}.");
             _window.BeginInvoke(() => _trayIcon.Text = $"Voice to Text {VersionLabel} — ready ({_settings.Hotkey.Describe()})");
         }
         catch (Exception ex)

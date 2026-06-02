@@ -119,9 +119,11 @@ public sealed class WasapiAudioSource : IAudioSource
     private void OnRecordingStopped(object? sender, StoppedEventArgs e)
     {
         _captureStopped = true;
-        _stopped?.TrySetResult(true);
+        // Notify the device-loss consumer while the capture is still live, THEN release any
+        // StopAndGetSamplesAsync awaiter (whose continuation disposes the capture).
         if (e.Exception is not null)
             RecordingFailed?.Invoke(e.Exception);
+        _stopped?.TrySetResult(true);
     }
 
     /// <summary>RMS level (0..~1) of a raw capture buffer. Handles 32-bit float and 16-bit PCM.</summary>

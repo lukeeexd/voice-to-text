@@ -7,6 +7,7 @@ using VoiceToText.Dashboard;
 using VoiceToText.Hotkeys;
 using VoiceToText.Injection;
 using VoiceToText.Overlay;
+using VoiceToText.Onboarding;
 using VoiceToText.History;
 using VoiceToText.Stats;
 using VoiceToText.Settings;
@@ -39,6 +40,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private ISttEngine _stt;
     private ListeningOverlay? _overlay;
     private DashboardForm? _dashboard;
+    private WelcomeForm? _welcome;
     private HotkeyDefinition _registeredHotkey;
     private AppState _state = AppState.Idle;
     private bool _busy;
@@ -95,6 +97,22 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _window.BeginInvoke(ShowPostUpdateBalloon);
         else
             _ = Task.Run(() => CheckForUpdatesAsync(userInitiated: false));
+
+        if (!_settings.OnboardingCompleted)
+        {
+            // Mark + persist immediately so the welcome never re-shows (even on a crash/close).
+            _settings.OnboardingCompleted = true;
+            _settings.Save();
+            ShowWelcome();
+        }
+    }
+
+    private void ShowWelcome()
+    {
+        _welcome = new WelcomeForm(_settings);
+        _welcome.OpenSettingsRequested += () => ShowDashboard(DashboardPageKind.Settings);
+        _welcome.FormClosed += (_, _) => _welcome = null;
+        _welcome.Show();
     }
 
     private void OnUiThreadException(object? sender, ThreadExceptionEventArgs e)

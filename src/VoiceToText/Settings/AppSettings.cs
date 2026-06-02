@@ -60,6 +60,9 @@ public sealed class AppSettings
     /// <summary>Keep a local, opt-in log of recent dictations (history.json). Off by default.</summary>
     public bool HistoryEnabled { get; set; } = false;
 
+    /// <summary>Whether the first-run welcome has been shown. Set once on first launch.</summary>
+    public bool OnboardingCompleted { get; set; } = false;
+
     [JsonIgnore]
     public HotkeyDefinition Hotkey
     {

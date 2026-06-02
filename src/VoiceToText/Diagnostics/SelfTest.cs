@@ -514,6 +514,15 @@ internal static class SelfTest
 
             form.Close();
 
+            using (var welcome = new VoiceToText.Onboarding.WelcomeForm(settings))
+            {
+                welcome.Show();
+                Application.DoEvents();
+                welcome.Refresh();        // synchronous WM_PAINT for the first-run welcome dialog
+                Application.DoEvents();
+                welcome.Close();
+            }
+
             File.WriteAllText(outputPath, "DASH WINDOW OK (constructed, all pages shown + painted, closed)");
             Console.WriteLine("DASH WINDOW OK");
             return 0;

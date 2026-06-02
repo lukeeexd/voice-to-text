@@ -40,7 +40,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private ISttEngine _stt;
     private ListeningOverlay? _overlay;
     private DashboardForm? _dashboard;
-    private WelcomeForm? _welcome;
+    private OnboardingWizard? _onboarding;
     private HotkeyDefinition _registeredHotkey;
     private AppState _state = AppState.Idle;
     private bool _busy;
@@ -103,16 +103,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
             // Mark + persist immediately so the welcome never re-shows (even on a crash/close).
             _settings.OnboardingCompleted = true;
             _settings.Save();
-            ShowWelcome();
+            ShowOnboarding();
         }
     }
 
-    private void ShowWelcome()
+    private void ShowOnboarding()
     {
-        _welcome = new WelcomeForm(_settings);
-        _welcome.OpenSettingsRequested += () => ShowDashboard(DashboardPageKind.Settings);
-        _welcome.FormClosed += (_, _) => _welcome = null;
-        _welcome.Show();
+        _onboarding = new OnboardingWizard(_settings);
+        _onboarding.Completed += OnSettingsSaved; // persist + re-register the (possibly changed) hotkey
+        _onboarding.FormClosed += (_, _) => _onboarding = null;
+        _onboarding.Show();
     }
 
     private void OnUiThreadException(object? sender, ThreadExceptionEventArgs e)

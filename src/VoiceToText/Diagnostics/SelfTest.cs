@@ -514,13 +514,18 @@ internal static class SelfTest
 
             form.Close();
 
-            using (var welcome = new VoiceToText.Onboarding.WelcomeForm(settings))
+            using (var wizard = new VoiceToText.Onboarding.OnboardingWizard(settings))
             {
-                welcome.Show();
+                wizard.Show();
                 Application.DoEvents();
-                welcome.Refresh();        // synchronous WM_PAINT for the first-run welcome dialog
-                Application.DoEvents();
-                welcome.Close();
+                wizard.Refresh();
+                for (var s = 0; s < 3; s++)   // paint each of the 4 wizard steps (never finishes → no save)
+                {
+                    wizard.AdvanceForSmoke();
+                    Application.DoEvents();
+                    wizard.Refresh();
+                }
+                wizard.Close();
             }
 
             File.WriteAllText(outputPath, "DASH WINDOW OK (constructed, all pages shown + painted, closed)");

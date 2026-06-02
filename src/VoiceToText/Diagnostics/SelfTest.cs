@@ -375,6 +375,57 @@ internal static class SelfTest
         return allPass ? 0 : 1;
     }
 
+    /// <summary>Checks the pure DiagnosticsInfo row assembly + acceleration flag. No live probing.</summary>
+    public static int RunAboutTest(string outputPath)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+
+        var gpu = new DiagnosticsInfo(
+            version: "0.7.0", runtime: "Vulkan", gpu: "AMD Radeon RX 7900 XT",
+            model: "Large V3 Turbo", modelPath: @"C:\x\ggml-LargeV3Turbo.bin",
+            modelSizeBytes: 1_610_612_736, os: "Windows 11", framework: ".NET 10.0", arch: "X64");
+
+        Pass("vulkan => gpu accelerated", gpu.IsGpuAccelerated);
+        var rows = gpu.Rows;
+        bool Has(string label, string valueContains) =>
+            rows.Any(r => r.Label == label && r.Value.Contains(valueContains, StringComparison.OrdinalIgnoreCase));
+        Pass("version row", Has("Version", "0.7.0"));
+        Pass("acceleration row green text", Has("Acceleration", "Vulkan (GPU)"));
+        Pass("gpu row", Has("GPU", "7900 XT"));
+        Pass("model row", Has("Speech model", "Large V3 Turbo"));
+        Pass("model file row has size", Has("Model file", "1.5 GB"));
+        Pass("system row", Has("System", "Windows 11") && Has("System", ".NET 10.0"));
+
+        var cpu = new DiagnosticsInfo(
+            version: "0.7.0", runtime: "Cpu", gpu: "Unknown",
+            model: "Large V3 Turbo", modelPath: "x", modelSizeBytes: 0,
+            os: "Windows 11", framework: ".NET 10.0", arch: "X64");
+        Pass("cpu => not gpu accelerated", !cpu.IsGpuAccelerated);
+        Pass("cpu acceleration text", cpu.Rows.Any(r => r.Label == "Acceleration" && r.Value.Contains("CPU")));
+
+        var unknown = new DiagnosticsInfo(
+            version: "0.7.0", runtime: "Unknown", gpu: "Unknown",
+            model: "Large V3 Turbo", modelPath: "x", modelSizeBytes: 0,
+            os: "Windows 11", framework: ".NET 10.0", arch: "X64");
+        Pass("unknown => not gpu accelerated", !unknown.IsGpuAccelerated);
+        Pass("unknown acceleration shows raw", unknown.Rows.Any(r => r.Label == "Acceleration" && r.Value == "Unknown"));
+
+        var text = gpu.ToClipboardText();
+        Pass("clipboard text has key fields", text.Contains("0.7.0") && text.Contains("Vulkan") && text.Contains("7900 XT"));
+
+        log.AppendLine(allPass ? "ALL ABOUT TESTS PASSED" : "SOME ABOUT TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
+
     /// <summary>Checks the pure text-rules engine (replacements + spoken commands). No UI.</summary>
     public static int RunTextRulesTest(string outputPath)
     {
@@ -589,21 +640,5 @@ internal static class SelfTest
         return 0;
     }
 
-    /// <summary>
-    /// Read Whisper.net's loaded runtime via reflection (the enum member names
-    /// are not part of our compile surface). Tells us Vulkan vs Cpu.
-    /// </summary>
-    private static string GetLoadedRuntime()
-    {
-        try
-        {
-            var type = Type.GetType("Whisper.net.LibraryLoader.RuntimeOptions, Whisper.net");
-            var value = type?.GetProperty("LoadedLibrary")?.GetValue(null);
-            return value?.ToString() ?? "unknown";
-        }
-        catch
-        {
-            return "unknown";
-        }
-    }
+    private static string GetLoadedRuntime() => RuntimeProbe.LoadedRuntime();
 }

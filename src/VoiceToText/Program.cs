@@ -7,7 +7,8 @@ internal static class Program
 {
     /// <summary>
     /// Entry point. Diagnostics ("--selftest", "--vadtest", "--updatecheck", "--widgettest",
-    /// "--statstest", "--dashtest", "--dashwindow", "--textrulestest", "--historytest", "--logtest") run headless and exit. Otherwise launches the tray app as
+    /// "--statstest", "--dashtest", "--dashwindow", "--textrulestest", "--historytest", "--logtest",
+    /// "--abouttest") run headless and exit. Otherwise launches the tray app as
     /// a single instance.
     /// "--postupdate &lt;ver&gt;" is passed by the update relauncher so the app can confirm the upgrade.
     /// </summary>
@@ -48,6 +49,9 @@ internal static class Program
 
         if (args.Length > 0 && args[0].Equals("--logtest", StringComparison.OrdinalIgnoreCase))
             return SelfTest.RunLogTest("logtest-output.txt");
+
+        if (args.Length > 0 && args[0].Equals("--abouttest", StringComparison.OrdinalIgnoreCase))
+            return SelfTest.RunAboutTest("abouttest-output.txt");
 
         Diagnostics.Log.Info("Voice to Text starting.");
 

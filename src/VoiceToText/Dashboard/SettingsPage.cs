@@ -1,6 +1,7 @@
 using System.Drawing;
 using VoiceToText.App;
 using VoiceToText.Audio;
+using VoiceToText.Dashboard.Controls;
 using VoiceToText.Hotkeys;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
@@ -17,22 +18,24 @@ namespace VoiceToText.Dashboard;
 internal sealed class SettingsPage : UserControl
 {
     private readonly AppSettings _settings;
+    private const int CardWidth = 700;
+
     private readonly ComboBox _deviceCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
     private readonly ComboBox _modelCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
     private readonly ComboBox _activationCombo = new() { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, DrawMode = DrawMode.OwnerDrawFixed };
     private readonly TextBox _hotkeyBox = new() { ReadOnly = true, Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly Label _hintLabel = new() { AutoSize = true, ForeColor = Theme.TextSecondary, Location = new Point(20, 184), MaximumSize = new Size(440, 0) };
-    private readonly CheckBox _autoStopCheck = new() { Text = "Auto-stop after a pause in speech", AutoSize = true, Location = new Point(20, 282), ForeColor = Theme.TextPrimary };
+    private readonly Label _hintLabel = new() { AutoSize = false, ForeColor = Theme.TextSecondary, Font = Theme.Caption };
+    private readonly ToggleSwitch _autoStopCheck = new();
     private readonly NumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly CheckBox _overlayCheck = new() { Text = "Show on-screen indicator while dictating", AutoSize = true, Location = new Point(20, 342), ForeColor = Theme.TextPrimary };
-    private readonly CheckBox _historyCheck = new() { Text = "Save recent dictation history (kept only on this PC)", AutoSize = true, Location = new Point(20, 376), ForeColor = Theme.TextPrimary };
+    private readonly ToggleSwitch _overlayCheck = new();
+    private readonly ToggleSwitch _historyCheck = new();
     private readonly NumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly CheckBox _autoUpdateCheck = new() { Text = "Automatically check for updates on startup", AutoSize = true, Location = new Point(20, 444), ForeColor = Theme.TextPrimary };
+    private readonly ToggleSwitch _autoUpdateCheck = new();
     private readonly TextBox _updateFolderBox = new() { BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
-    private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(20, 544), ForeColor = Theme.TextPrimary };
-    private readonly Button _saveButton = new() { Text = "Save", Location = new Point(20, 584), Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White, Enabled = false };
-    private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓", Location = new Point(126, 590) };
-    private readonly Label _unsavedLabel = new() { AutoSize = true, ForeColor = Theme.Warning, Visible = false, Text = "● Unsaved changes", Location = new Point(230, 590) };
+    private readonly ToggleSwitch _startupCheck = new();
+    private readonly Button _saveButton = new() { Text = "Save", Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White, Enabled = false };
+    private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓" };
+    private readonly Label _unsavedLabel = new() { AutoSize = true, ForeColor = Theme.Warning, Visible = false, Text = "● Unsaved changes" };
     private string _baseline = "";
     private bool _loading;
     private HotkeyDefinition _hotkey;
@@ -92,56 +95,85 @@ internal sealed class SettingsPage : UserControl
 
     private void BuildUi()
     {
-        var deviceLabel = new Label { Text = "Microphone:", Location = new Point(20, 18), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _deviceCombo.SetBounds(20, 40, 440, 24);
-        _deviceCombo.DrawItem += OnComboDrawItem;
-
-        var modelLabel = new Label { Text = "Speech model:", Location = new Point(20, 74), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _modelCombo.SetBounds(20, 96, 440, 24);
-        _modelCombo.DrawItem += OnComboDrawItem;
-
-        var hotkeyLabel = new Label { Text = "Dictation hotkey:", Location = new Point(20, 132), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _hotkeyBox.SetBounds(20, 154, 440, 26);
-        _hotkeyBox.GotFocus += (_, _) => { _hotkeyBox.Text = "Press a key or combination…"; HotkeyCaptureStarted?.Invoke(); };
-        _hotkeyBox.LostFocus += (_, _) => { _hotkeyBox.Text = _hotkey.Describe(); HotkeyCaptureEnded?.Invoke(); };
-
-        var activationLabel = new Label { Text = "Activation:", Location = new Point(20, 220), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _activationCombo.SetBounds(20, 242, 200, 24);
-        _activationCombo.DrawItem += OnComboDrawItem;
+        // Controls that sit in rows: size them; combos keep the dark owner-draw.
+        _deviceCombo.Width = 300; _deviceCombo.DrawItem += OnComboDrawItem;
+        _modelCombo.Width = 300; _modelCombo.DrawItem += OnComboDrawItem;
+        _activationCombo.Width = 180; _activationCombo.DrawItem += OnComboDrawItem;
         _activationCombo.Items.AddRange(new object[] { "Press to toggle", "Hold to talk" });
         _activationCombo.SelectedIndexChanged += (_, _) => UpdateAutoStopEnabled();
-
+        _hotkeyBox.Size = new Size(240, 26);
+        _hotkeyBox.GotFocus += (_, _) => { _hotkeyBox.Text = "Press a key or combination…"; HotkeyCaptureStarted?.Invoke(); };
+        _hotkeyBox.LostFocus += (_, _) => { _hotkeyBox.Text = _hotkey.Describe(); HotkeyCaptureEnded?.Invoke(); };
+        _silenceUpDown.Width = 56;
+        _wpmUpDown.Width = 64;
         _autoStopCheck.CheckedChanged += (_, _) => UpdateAutoStopEnabled();
-        var stopAfterLabel = new Label { Text = "Stop after", Location = new Point(40, 308), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _silenceUpDown.SetBounds(116, 306, 56, 24);
-        var secondsLabel = new Label { Text = "seconds of silence", Location = new Point(178, 308), AutoSize = true, ForeColor = Theme.TextPrimary };
 
-        var wpmLabel = new Label { Text = "Typing speed:", Location = new Point(20, 408), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _wpmUpDown.SetBounds(108, 406, 60, 24);
-        var wpmSuffix = new Label { Text = "WPM  (used to estimate \"time saved\")", Location = new Point(176, 408), AutoSize = true, ForeColor = Theme.TextSecondary };
+        // Composite controls (numeric + unit / textbox + browse) used as a single "control" in a row.
+        var silence = RowComposite(_silenceUpDown, "seconds");
+        var wpm = RowComposite(_wpmUpDown, "WPM");
 
-        var updateFolderLabel = new Label { Text = "Update folder:", Location = new Point(20, 478), AutoSize = true, ForeColor = Theme.TextPrimary };
-        _updateFolderBox.SetBounds(110, 476, 280, 24);
-        var browseButton = new Button { Text = "Browse…", Location = new Point(396, 475), Size = new Size(64, 26), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
+        var browseButton = new Button { Text = "Browse…", Size = new Size(72, 26), FlatStyle = FlatStyle.Flat, BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary };
         browseButton.FlatAppearance.BorderColor = Theme.CardBorder;
         browseButton.Click += OnBrowseUpdateFolder;
-        var updateNote = new Label { Text = "Updates run an installer from this folder — only enable this for a folder you trust.", Location = new Point(20, 506), AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(440, 0) };
+        _updateFolderBox.Size = new Size(232, 24);
+        var folder = new Panel { BackColor = Theme.CardBg, Height = 26, Width = _updateFolderBox.Width + 8 + browseButton.Width };
+        _updateFolderBox.Location = new Point(0, 1);
+        browseButton.Location = new Point(_updateFolderBox.Width + 8, 0);
+        folder.Controls.Add(_updateFolderBox);
+        folder.Controls.Add(browseButton);
+        var updateWarning = new Label { Text = "⚠ Runs an installer from this folder — only enable for a folder you trust.", ForeColor = Theme.Warning, Font = Theme.Caption };
+
+        // --- Cards ---
+        var dictation = new SectionCard("Dictation") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
+        dictation.AddRow("Microphone", _deviceCombo);
+        dictation.AddRow("Speech model", _modelCombo);
+        dictation.AddRow("Dictation hotkey", _hotkeyBox, _hintLabel);
+        dictation.AddRow("Activation", _activationCombo);
+        dictation.AddRow("Auto-stop after a pause in speech", _autoStopCheck);
+        dictation.AddRow("Stop after", silence);
+
+        var feedback = new SectionCard("Feedback & privacy") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
+        feedback.AddRow("Show on-screen indicator while dictating", _overlayCheck);
+        feedback.AddRow("Save recent dictation history", _historyCheck, new Label { Text = "Kept only on this PC.", ForeColor = Theme.TextSecondary, Font = Theme.Caption });
+
+        var general = new SectionCard("General") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
+        general.AddRow("Typing speed", wpm, new Label { Text = "Used to estimate \"time saved\".", ForeColor = Theme.TextSecondary, Font = Theme.Caption });
+        general.AddRow("Start automatically when I log in", _startupCheck);
+
+        var updates = new SectionCard("Updates") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
+        updates.AddRow("Check for updates on startup", _autoUpdateCheck);
+        updates.AddRow("Update folder", folder, updateWarning);
+
+        // --- Scroll area (cards) + pinned Save bar ---
+        var cards = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = Theme.WindowBg,
+            Margin = Padding.Empty,
+            Location = new Point(0, 0),
+        };
+        cards.Controls.AddRange(new Control[] { dictation, feedback, general, updates });
+
+        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Theme.WindowBg, Padding = new Padding(24, 18, 24, 8) };
+        scroll.Controls.Add(cards);
 
         _saveButton.FlatAppearance.BorderSize = 0;
         _saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
         _saveButton.Click += OnSave;
+        _saveButton.Location = new Point(24, 12);
+        _savedLabel.Location = new Point(130, 18);
+        _unsavedLabel.Location = new Point(234, 18);
+        var saveBar = new Panel { Dock = DockStyle.Bottom, Height = 54, BackColor = Theme.WindowBg };
+        saveBar.Controls.AddRange(new Control[] { _saveButton, _savedLabel, _unsavedLabel });
 
-        Controls.AddRange(new Control[]
-        {
-            deviceLabel, _deviceCombo, modelLabel, _modelCombo,
-            hotkeyLabel, _hotkeyBox, _hintLabel,
-            activationLabel, _activationCombo,
-            _autoStopCheck, stopAfterLabel, _silenceUpDown, secondsLabel,
-            _overlayCheck, _historyCheck, wpmLabel, _wpmUpDown, wpmSuffix,
-            _autoUpdateCheck, updateFolderLabel, _updateFolderBox, browseButton, updateNote,
-            _startupCheck, _saveButton, _savedLabel, _unsavedLabel,
-        });
+        // Fill added before Bottom so the bar reserves its edge first (matches DashboardForm).
+        Controls.Add(scroll);
+        Controls.Add(saveBar);
 
+        // Dirty-tracking wiring (unchanged set of inputs).
         _deviceCombo.SelectedIndexChanged += (_, _) => UpdateDirty();
         _modelCombo.SelectedIndexChanged += (_, _) => UpdateDirty();
         _activationCombo.SelectedIndexChanged += (_, _) => UpdateDirty();
@@ -153,6 +185,18 @@ internal sealed class SettingsPage : UserControl
         _autoUpdateCheck.CheckedChanged += (_, _) => UpdateDirty();
         _updateFolderBox.TextChanged += (_, _) => UpdateDirty();
         _startupCheck.CheckedChanged += (_, _) => UpdateDirty();
+    }
+
+    // A small composite: a control followed by a unit label, sized to fit, for use as one row "control".
+    private static Panel RowComposite(Control control, string unit)
+    {
+        control.Location = new Point(0, 0);
+        var label = new Label { Text = unit, AutoSize = true, ForeColor = Theme.TextSecondary, Font = Theme.Caption, Location = new Point(control.Width + 6, (control.Height - 14) / 2 + 2) };
+        var panel = new Panel { BackColor = Theme.CardBg, Height = Math.Max(control.Height, 20) };
+        panel.Controls.Add(control);
+        panel.Controls.Add(label);
+        panel.Width = control.Width + 6 + 70;
+        return panel;
     }
 
     // Auto-stop applies only in press-to-toggle mode; the silence spinner only when it's also checked.

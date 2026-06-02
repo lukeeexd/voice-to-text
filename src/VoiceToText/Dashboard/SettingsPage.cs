@@ -158,11 +158,12 @@ internal sealed class SettingsPage : UserControl
         };
         cards.Controls.AddRange(new Control[] { dictation, feedback, general, updates });
 
-        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Theme.WindowBg, Padding = new Padding(0, 18, 0, 8) };
+        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Theme.WindowBg };
         scroll.Controls.Add(cards);
 
-        // Cards grow with the window up to a readable max and stay centered, instead of a fixed
-        // column hugging the left. Re-runs on ClientSize changes (incl. the scrollbar appearing).
+        // Cards grow with the window up to a readable max and stay centered (both axes) when they
+        // fit; when taller than the viewport they pin near the top and scroll. Re-runs on ClientSize
+        // changes (incl. the scrollbar appearing).
         void LayoutCards()
         {
             if (_layingOutCards) return;
@@ -170,10 +171,12 @@ internal sealed class SettingsPage : UserControl
             try
             {
                 int clientW = scroll.ClientSize.Width;
+                int clientH = scroll.ClientSize.Height;
                 if (clientW <= 1) return;
                 int cardW = Math.Min(980, Math.Max(320, clientW - 48));
                 foreach (Control c in cards.Controls) c.Width = cardW;
                 cards.Left = Math.Max(16, (clientW - cardW) / 2);
+                cards.Top = cards.Height + 36 <= clientH ? (clientH - cards.Height) / 2 : 18;
             }
             finally { _layingOutCards = false; }
         }

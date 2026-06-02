@@ -131,6 +131,12 @@ internal sealed class DashboardForm : Form
     /// <summary>Re-sync the Settings page (e.g. after a rejected hotkey was reverted).</summary>
     public void ReloadSettings() => _settingsPage.ReloadFromSettings();
 
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        DarkTitleBar.Apply(Handle);
+    }
+
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);

@@ -38,6 +38,7 @@ internal sealed class SettingsPage : UserControl
     private readonly Label _unsavedLabel = new() { AutoSize = true, ForeColor = Theme.Warning, Visible = false, Text = "● Unsaved changes" };
     private string _baseline = "";
     private bool _loading;
+    private bool _layingOutCards;
     private HotkeyDefinition _hotkey;
 
     public event Action? SettingsSaved;
@@ -157,8 +158,27 @@ internal sealed class SettingsPage : UserControl
         };
         cards.Controls.AddRange(new Control[] { dictation, feedback, general, updates });
 
-        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Theme.WindowBg, Padding = new Padding(24, 18, 24, 8) };
+        var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Theme.WindowBg, Padding = new Padding(0, 18, 0, 8) };
         scroll.Controls.Add(cards);
+
+        // Cards grow with the window up to a readable max and stay centered, instead of a fixed
+        // column hugging the left. Re-runs on ClientSize changes (incl. the scrollbar appearing).
+        void LayoutCards()
+        {
+            if (_layingOutCards) return;
+            _layingOutCards = true;
+            try
+            {
+                int clientW = scroll.ClientSize.Width;
+                if (clientW <= 1) return;
+                int cardW = Math.Min(980, Math.Max(320, clientW - 48));
+                foreach (Control c in cards.Controls) c.Width = cardW;
+                cards.Left = Math.Max(16, (clientW - cardW) / 2);
+            }
+            finally { _layingOutCards = false; }
+        }
+        scroll.ClientSizeChanged += (_, _) => LayoutCards();
+        LayoutCards();
 
         _saveButton.FlatAppearance.BorderSize = 0;
         _saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;

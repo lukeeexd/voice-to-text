@@ -80,7 +80,9 @@ internal sealed class SectionCard : Control
     protected override void OnSizeChanged(EventArgs e)
     {
         base.OnSizeChanged(e);
-        Content.Width = Math.Max(0, Width - PadX * 2);
+        int inner = Math.Max(0, Width - PadX * 2);
+        Content.Width = inner;
+        foreach (Control row in Content.Controls) row.Width = inner; // stretch rows so right-anchored controls track the card width
         AdjustHeight();
     }
 

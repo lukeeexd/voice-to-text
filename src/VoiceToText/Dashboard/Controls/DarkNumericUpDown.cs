@@ -90,7 +90,9 @@ internal sealed class DarkNumericUpDown : Control
     protected override void OnEnabledChanged(EventArgs e)
     {
         base.OnEnabledChanged(e);
-        _text.Enabled = Enabled; // grey + block the inner field too, not just the arrows
+        // Hide the live TextBox when disabled — a disabled TextBox ignores BackColor and paints a
+        // light system background (a pale box). OnPaint draws the value muted in its place instead.
+        _text.Visible = Enabled;
         Invalidate();
     }
 
@@ -98,6 +100,13 @@ internal sealed class DarkNumericUpDown : Control
     {
         var g = e.Graphics;
         Theme.PaintField(g, ClientRectangle, BackColor, Radius);
+
+        if (!Enabled) // the textbox is hidden when disabled; draw its value in its place, muted
+        {
+            using var vb = new SolidBrush(Theme.TextMuted);
+            using var vf = new StringFormat { LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+            g.DrawString(_text.Text, _text.Font, vb, new Rectangle(10, 0, Width - StepperW - 14, Height), vf);
+        }
 
         int sx = Width - StepperW;
         using (var pen = new Pen(Theme.InputBorder))

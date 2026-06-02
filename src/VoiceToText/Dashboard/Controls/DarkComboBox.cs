@@ -54,26 +54,36 @@ internal sealed class DarkComboBox : ComboBox
             PaintChrome();
     }
 
-    // Draw the rounded border + dark button strip + chevron over the system chrome.
-    // (OnDrawItem already painted the dark text/background for the closed selected item.)
+    // Fully own the closed-control face so no light native chrome (border/dropdown button) shows
+    // through — in particular the corner specks the rounded Region would otherwise expose. The
+    // control's rounded Region clips this DC, so the fill keeps its rounded shape (corners show the
+    // parent card). We repaint the selected text ourselves since the fill covers what the base drew.
     private void PaintChrome()
     {
         using var g = CreateGraphics();
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-        // Cover the native dropdown button strip with InputBg.
+        // Paint the whole face InputBg, covering the native border + dropdown button.
         using (var fill = new SolidBrush(Theme.InputBg))
-            g.FillRectangle(fill, new Rectangle(Width - ButtonW, 1, ButtonW, Height - 2));
+            g.FillRectangle(fill, ClientRectangle);
 
-        // Rounded border.
-        using (var path = Theme.RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), Radius))
-        using (var pen = new Pen(Theme.InputBorder))
-            g.DrawPath(pen, path);
+        // Selected text on the left.
+        if (SelectedItem is not null)
+        {
+            using var tb = new SolidBrush(Enabled ? Theme.TextPrimary : Theme.TextMuted);
+            using var tf = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
+            g.DrawString(GetItemText(SelectedItem), Font, tb, new Rectangle(10, 0, Width - ButtonW - 12, Height), tf);
+        }
 
-        // Chevron.
+        // Chevron on the right.
         using (var cb = new SolidBrush(Theme.TextSecondary))
         using (var cf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
             g.DrawString("▾", Font, cb, new Rectangle(Width - ButtonW, 0, ButtonW, Height), cf);
+
+        // Rounded border on top.
+        using (var path = Theme.RoundedRect(new Rectangle(0, 0, Width - 1, Height - 1), Radius))
+        using (var pen = new Pen(Theme.InputBorder))
+            g.DrawPath(pen, path);
     }
 }

@@ -1,4 +1,5 @@
 using System.Drawing;
+using VoiceToText.Dashboard.Controls;
 using VoiceToText.History;
 using VoiceToText.Settings;
 
@@ -30,13 +31,11 @@ internal sealed class HistoryPage : UserControl
         Font = Theme.Caption,
         Text = "Your last 50 dictations, kept only on this PC.",
     };
-    private readonly Button _clear = new()
+    private readonly DarkButton _clear = new()
     {
+        Variant = DarkButtonVariant.Secondary,
         Text = "Clear all",
-        FlatStyle = FlatStyle.Flat,
         Size = new Size(80, 26),
-        BackColor = Theme.CardBg,
-        ForeColor = Theme.TextSecondary,
         Font = Theme.Caption,
         TabStop = false,
     };
@@ -63,7 +62,6 @@ internal sealed class HistoryPage : UserControl
         _settings = settings;
         BackColor = Theme.WindowBg;
         DoubleBuffered = true;
-        _clear.FlatAppearance.BorderColor = Theme.CardBorder;
         _clear.Click += OnClear;
         Controls.AddRange(new Control[] { _title, _subtitle, _clear, _list, _empty });
     }

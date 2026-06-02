@@ -54,7 +54,7 @@ internal sealed class DarkButton : Button
     protected override void OnMouseLeave(EventArgs e) { _hover = false; _pressed = false; Invalidate(); base.OnMouseLeave(e); }
     protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { _pressed = true; Invalidate(); } base.OnMouseDown(e); }
     protected override void OnMouseUp(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { _pressed = false; Invalidate(); } base.OnMouseUp(e); }
-    protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
+    protected override void OnEnabledChanged(EventArgs e) { Cursor = Enabled ? Cursors.Hand : Cursors.Default; Invalidate(); base.OnEnabledChanged(e); }
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -80,12 +80,12 @@ internal sealed class DarkButton : Button
                  : _pressed ? Theme.AccentDeep
                  : _hover   ? Theme.AccentLight
                             : Theme.Accent;
-            text = Enabled ? Color.White : Theme.TextMuted;
+            text = Enabled ? Color.White : Theme.TextSecondary;
         }
         else // Secondary
         {
             fill = !Enabled ? Theme.CardBg
-                 : _pressed ? Blend(Theme.InputBg, Color.Black, 0.18f)
+                 : _pressed ? Blend(Theme.InputBg, Color.Black, 0.30f)
                  : _hover   ? Theme.InputBg
                             : Theme.CardBg;
             border = Enabled ? Theme.InputBorder : Blend(Theme.InputBorder, Theme.CardBg, 0.5f);

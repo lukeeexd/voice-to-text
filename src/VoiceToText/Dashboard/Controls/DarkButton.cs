@@ -36,10 +36,10 @@ internal sealed class DarkButton : Button
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
         Cursor = Cursors.Hand;
-        Font = Theme.LabelBold;
+        Font = Theme.Caption; // one canonical button look app-wide (matches the About buttons)
         ForeColor = Color.White;
         BackColor = Theme.WindowBg;
-        Size = new Size(96, 32);
+        Size = new Size(96, 30);
     }
 
     /// <summary>Primary (filled accent) or Secondary (outlined). Default Primary.</summary>

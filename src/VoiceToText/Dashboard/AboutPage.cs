@@ -54,7 +54,6 @@ internal sealed class AboutPage : UserControl
         Text = text,
         AutoSize = false,
         Size = new Size(132, 30),
-        Font = Theme.Caption,
     };
 
     protected override void OnVisibleChanged(EventArgs e)

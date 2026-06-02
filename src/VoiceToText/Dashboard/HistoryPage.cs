@@ -35,8 +35,7 @@ internal sealed class HistoryPage : UserControl
     {
         Variant = DarkButtonVariant.Secondary,
         Text = "Clear all",
-        Size = new Size(80, 26),
-        Font = Theme.Caption,
+        Size = new Size(80, 30),
         TabStop = false,
     };
     private readonly FlowLayoutPanel _list = new()

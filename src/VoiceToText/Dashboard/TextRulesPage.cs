@@ -19,7 +19,7 @@ internal sealed class TextRulesPage : UserControl
     private readonly Label _tryLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Text = "TRY IT", Font = Theme.Caption };
     private readonly TextBox _previewInput = new() { BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle, Text = "i pushed to github new line all tests pass" };
     private readonly TextBox _previewOutput = new() { BackColor = Theme.CardBg, ForeColor = Color.FromArgb(0x9B, 0xE6, 0xA8), BorderStyle = BorderStyle.FixedSingle, ReadOnly = true, Multiline = true };
-    private readonly DarkButton _saveButton = new() { Variant = DarkButtonVariant.Primary, Text = "Save", Size = new Size(96, 32) };
+    private readonly DarkButton _saveButton = new() { Variant = DarkButtonVariant.Primary, Text = "Save", Size = new Size(96, 30) };
     private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Saved ✓" };
 
     public TextRulesPage(AppSettings settings)

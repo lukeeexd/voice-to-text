@@ -33,7 +33,7 @@ internal sealed class SettingsPage : UserControl
     private readonly ToggleSwitch _autoUpdateCheck = new();
     private readonly TextBox _updateFolderBox = new() { BorderStyle = BorderStyle.None };
     private readonly ToggleSwitch _startupCheck = new();
-    private readonly DarkButton _saveButton = new() { Variant = DarkButtonVariant.Primary, Text = "Save", Size = new Size(96, 32), Enabled = false };
+    private readonly DarkButton _saveButton = new() { Variant = DarkButtonVariant.Primary, Text = "Save", Size = new Size(96, 30), Enabled = false };
     private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓" };
     private readonly Label _unsavedLabel = new() { AutoSize = true, ForeColor = Theme.Warning, Visible = false, Text = "● Unsaved changes" };
     private string _baseline = "";

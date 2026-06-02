@@ -36,8 +36,8 @@ internal sealed class OnboardingWizard : Form
     private readonly Label _doneBody = new() { AutoSize = false, Size = new Size(470, 110), ForeColor = Theme.TextSecondary, Font = Theme.NavItem };
     private readonly Label _doneStatus = new() { AutoSize = false, Size = new Size(470, 40), Font = Theme.Caption };
 
-    private readonly DarkButton _back = new() { Variant = DarkButtonVariant.Secondary, Text = "Back", Size = new Size(90, 32) };
-    private readonly DarkButton _next = new() { Variant = DarkButtonVariant.Primary, Text = "Next", Size = new Size(110, 32) };
+    private readonly DarkButton _back = new() { Variant = DarkButtonVariant.Secondary, Text = "Back", Size = new Size(90, 30) };
+    private readonly DarkButton _next = new() { Variant = DarkButtonVariant.Primary, Text = "Next", Size = new Size(110, 30) };
     private readonly LinkLabel _skip = new() { Text = "Skip", AutoSize = true, LinkColor = Theme.TextMuted, ActiveLinkColor = Theme.AccentLight, Font = Theme.Caption };
 
     /// <summary>Raised after the wizard saves the chosen mic + hotkey; the host re-registers the hotkey.</summary>

@@ -105,12 +105,43 @@ internal sealed class DashboardForm : Form
 
     public void ShowPage(DashboardPageKind page)
     {
+        // Leaving a dirty Settings page? Offer to save first (covers nav clicks + programmatic navigation).
+        if (_active == DashboardPageKind.Settings && page != DashboardPageKind.Settings
+            && _settingsPage.HasUnsavedChanges() && !PromptSaveSettings())
+            return; // user cancelled — stay on Settings
+
         _active = page;
         _dashboardPage.Visible = page == DashboardPageKind.Dashboard;
         _settingsPage.Visible = page == DashboardPageKind.Settings;
         _textRulesPage.Visible = page == DashboardPageKind.TextRules;
         _historyPage.Visible = page == DashboardPageKind.History;
         SetActiveStyles();
+    }
+
+    // Returns true to proceed (Save or Discard chosen), false to abort (Cancel).
+    private bool PromptSaveSettings()
+    {
+        var choice = MessageBox.Show(this,
+            "You have unsaved settings changes. Save them?",
+            "Voice to Text",
+            MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+        switch (choice)
+        {
+            case DialogResult.Yes: _settingsPage.Save(); return true;
+            case DialogResult.No: _settingsPage.ReloadFromSettings(); return true;
+            default: return false; // Cancel
+        }
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        // Only intercept a user clicking the X — never block app shutdown / logoff.
+        if (e.CloseReason == CloseReason.UserClosing && _settingsPage.HasUnsavedChanges() && !PromptSaveSettings())
+        {
+            e.Cancel = true;
+            return;
+        }
+        base.OnFormClosing(e);
     }
 
     private void SetActiveStyles()

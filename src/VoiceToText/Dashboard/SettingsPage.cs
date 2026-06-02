@@ -30,7 +30,11 @@ internal sealed class SettingsPage : UserControl
     private readonly CheckBox _autoUpdateCheck = new() { Text = "Automatically check for updates on startup", AutoSize = true, Location = new Point(20, 444), ForeColor = Theme.TextPrimary };
     private readonly TextBox _updateFolderBox = new() { BackColor = Theme.CardBg, ForeColor = Theme.TextPrimary, BorderStyle = BorderStyle.FixedSingle };
     private readonly CheckBox _startupCheck = new() { Text = "Start automatically when I log in", AutoSize = true, Location = new Point(20, 544), ForeColor = Theme.TextPrimary };
+    private readonly Button _saveButton = new() { Text = "Save", Location = new Point(20, 584), Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White, Enabled = false };
     private readonly Label _savedLabel = new() { AutoSize = true, ForeColor = Theme.Accent, Visible = false, Text = "Settings saved ✓", Location = new Point(126, 590) };
+    private readonly Label _unsavedLabel = new() { AutoSize = true, ForeColor = Theme.Warning, Visible = false, Text = "● Unsaved changes", Location = new Point(230, 590) };
+    private string _baseline = "";
+    private bool _loading;
     private HotkeyDefinition _hotkey;
 
     public event Action? SettingsSaved;
@@ -43,6 +47,7 @@ internal sealed class SettingsPage : UserControl
         _hotkey = settings.Hotkey;
         BackColor = Theme.WindowBg;
         ForeColor = Theme.TextPrimary;
+        _loading = true; // guard dirty-tracking during construction; LoadFromSettings re-baselines + clears it
         BuildUi();
         LoadDevices();
         LoadModels();
@@ -67,6 +72,7 @@ internal sealed class SettingsPage : UserControl
 
     private void LoadFromSettings()
     {
+        _loading = true;
         _hotkeyBox.Text = _hotkey.Describe();
         _startupCheck.Checked = AutoStart.IsEnabled();
         _activationCombo.SelectedIndex = _settings.HoldToTalk ? 1 : 0;
@@ -79,6 +85,9 @@ internal sealed class SettingsPage : UserControl
         _updateFolderBox.Text = _settings.UpdateFeedFolder;
         UpdateAutoStopEnabled();
         UpdateHint();
+        _loading = false;
+        _baseline = Snapshot();
+        UpdateDirty();
     }
 
     private void BuildUi()
@@ -118,10 +127,9 @@ internal sealed class SettingsPage : UserControl
         browseButton.Click += OnBrowseUpdateFolder;
         var updateNote = new Label { Text = "Updates run an installer from this folder — only enable this for a folder you trust.", Location = new Point(20, 506), AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(440, 0) };
 
-        var saveButton = new Button { Text = "Save", Location = new Point(20, 584), Size = new Size(96, 30), FlatStyle = FlatStyle.Flat, BackColor = Theme.Accent, ForeColor = Color.White };
-        saveButton.FlatAppearance.BorderSize = 0;
-        saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
-        saveButton.Click += OnSave;
+        _saveButton.FlatAppearance.BorderSize = 0;
+        _saveButton.FlatAppearance.MouseOverBackColor = Theme.AccentLight;
+        _saveButton.Click += OnSave;
 
         Controls.AddRange(new Control[]
         {
@@ -131,8 +139,20 @@ internal sealed class SettingsPage : UserControl
             _autoStopCheck, stopAfterLabel, _silenceUpDown, secondsLabel,
             _overlayCheck, _historyCheck, wpmLabel, _wpmUpDown, wpmSuffix,
             _autoUpdateCheck, updateFolderLabel, _updateFolderBox, browseButton, updateNote,
-            _startupCheck, saveButton, _savedLabel,
+            _startupCheck, _saveButton, _savedLabel, _unsavedLabel,
         });
+
+        _deviceCombo.SelectedIndexChanged += (_, _) => UpdateDirty();
+        _modelCombo.SelectedIndexChanged += (_, _) => UpdateDirty();
+        _activationCombo.SelectedIndexChanged += (_, _) => UpdateDirty();
+        _autoStopCheck.CheckedChanged += (_, _) => UpdateDirty();
+        _silenceUpDown.ValueChanged += (_, _) => UpdateDirty();
+        _overlayCheck.CheckedChanged += (_, _) => UpdateDirty();
+        _historyCheck.CheckedChanged += (_, _) => UpdateDirty();
+        _wpmUpDown.ValueChanged += (_, _) => UpdateDirty();
+        _autoUpdateCheck.CheckedChanged += (_, _) => UpdateDirty();
+        _updateFolderBox.TextChanged += (_, _) => UpdateDirty();
+        _startupCheck.CheckedChanged += (_, _) => UpdateDirty();
     }
 
     // Auto-stop applies only in press-to-toggle mode; the silence spinner only when it's also checked.
@@ -217,6 +237,7 @@ internal sealed class SettingsPage : UserControl
             _hotkey = definition;
             _hotkeyBox.Text = definition.Describe();
             UpdateHint();
+            UpdateDirty();
         }
         return true; // swallow (captured combo, or a lone modifier being held)
     }
@@ -235,7 +256,37 @@ internal sealed class SettingsPage : UserControl
         }
     }
 
-    private void OnSave(object? sender, EventArgs e)
+    // A stable string of every value OnSave persists; baseline vs. current => dirty.
+    private string Snapshot() => string.Join("|",
+        (_deviceCombo.SelectedItem as AudioInputDevice)?.Id ?? "",
+        (_modelCombo.SelectedItem as ModelOption)?.Type.ToString() ?? "",
+        _hotkey.Describe(),
+        _activationCombo.SelectedIndex,
+        _autoStopCheck.Checked,
+        _silenceUpDown.Value,
+        _overlayCheck.Checked,
+        _historyCheck.Checked,
+        _wpmUpDown.Value,
+        _autoUpdateCheck.Checked,
+        _updateFolderBox.Text.Trim(),
+        _startupCheck.Checked);
+
+    private void UpdateDirty()
+    {
+        if (_loading) return;
+        bool dirty = Snapshot() != _baseline;
+        _unsavedLabel.Visible = dirty;
+        _saveButton.Enabled = dirty;
+        if (dirty) _savedLabel.Visible = false; // don't show a stale "Settings saved ✓" next to "Unsaved changes"
+    }
+
+    /// <summary>True when the controls differ from the last loaded/saved settings.</summary>
+    public bool HasUnsavedChanges() => Snapshot() != _baseline;
+
+    private void OnSave(object? sender, EventArgs e) => Save();
+
+    /// <summary>Persist the current control values and clear the dirty state.</summary>
+    public void Save()
     {
         _settings.InputDeviceId = (_deviceCombo.SelectedItem as AudioInputDevice)?.Id;
         if (_modelCombo.SelectedItem is ModelOption model)
@@ -252,6 +303,8 @@ internal sealed class SettingsPage : UserControl
         _settings.UpdateConsentAccepted = _autoUpdateCheck.Checked;
         AutoStart.Apply(_startupCheck.Checked);
         _savedLabel.Visible = true;
+        _baseline = Snapshot();
+        UpdateDirty();
         SettingsSaved?.Invoke();
     }
 }

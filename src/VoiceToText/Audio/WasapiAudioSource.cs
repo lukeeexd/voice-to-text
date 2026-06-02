@@ -28,11 +28,13 @@ public sealed class WasapiAudioSource : IAudioSource
 
     private SilenceDetector? _silenceDetector;
     private bool _silenceSignaled;
+    private volatile bool _captureStopped; // set once RecordingStopped has fired (device error or normal stop)
 
     public bool IsRecording => _capture is not null;
 
     public event Action? SilenceDetected;
     public event Action<float>? LevelChanged;
+    public event Action<Exception>? RecordingFailed;
 
     public void Start(string? deviceId, bool autoStop, double autoStopSilenceSeconds)
     {
@@ -51,6 +53,7 @@ public sealed class WasapiAudioSource : IAudioSource
         _stopped = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _silenceDetector = autoStop ? new SilenceDetector(autoStopSilenceSeconds) : null;
         _silenceSignaled = false;
+        _captureStopped = false;
 
         capture.DataAvailable += OnDataAvailable;
         capture.RecordingStopped += OnRecordingStopped;
@@ -64,7 +67,7 @@ public sealed class WasapiAudioSource : IAudioSource
         if (capture is null)
             return [];
 
-        capture.StopRecording();
+        if (!_captureStopped) capture.StopRecording(); // a device-loss stop already fired; avoid a second StopRecording
         await (_stopped?.Task ?? Task.CompletedTask).ConfigureAwait(false);
 
         capture.DataAvailable -= OnDataAvailable;
@@ -114,7 +117,12 @@ public sealed class WasapiAudioSource : IAudioSource
     }
 
     private void OnRecordingStopped(object? sender, StoppedEventArgs e)
-        => _stopped?.TrySetResult(true);
+    {
+        _captureStopped = true;
+        _stopped?.TrySetResult(true);
+        if (e.Exception is not null)
+            RecordingFailed?.Invoke(e.Exception);
+    }
 
     /// <summary>RMS level (0..~1) of a raw capture buffer. Handles 32-bit float and 16-bit PCM.</summary>
     private static double ComputeRms(byte[] buffer, int bytes, WaveFormat format)

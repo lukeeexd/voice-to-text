@@ -87,6 +87,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         _hotkeys.HoldToTalk = _settings.HoldToTalk;
 
         _audio.SilenceDetected += OnSilenceDetected;
+        _audio.RecordingFailed += OnRecordingFailed;
 
         _ = Task.Run(WarmUpAsync);
 
@@ -148,6 +149,35 @@ internal sealed class TrayApplicationContext : ApplicationContext
         {
             if (_state == AppState.Recording && !_busy)
                 _ = StopAndTranscribeAsync();
+        });
+    }
+
+    // Fires on the capture thread when the mic drops out mid-recording; marshal to the UI
+    // thread, tell the user, discard the partial capture, and return to Idle.
+    private void OnRecordingFailed(Exception ex)
+    {
+        if (!_window.IsHandleCreated)
+            return;
+        _window.BeginInvoke(() =>
+        {
+            // If a normal stop already won the race, _state is Transcribing (or _busy is set) — no-op.
+            if (_state != AppState.Recording || _busy)
+                return;
+            _busy = true;
+            Log.Error("Microphone lost during recording", ex);
+            ShowError("Microphone disconnected — recording stopped.");
+            _ = ResetAfterFailureAsync();
+        });
+    }
+
+    private async Task ResetAfterFailureAsync()
+    {
+        try { await _audio.StopAndGetSamplesAsync().ConfigureAwait(false); }
+        catch (Exception ex) { Log.Error("Cleanup after mic loss failed", ex); }
+        _window.BeginInvoke(() =>
+        {
+            SetState(AppState.Idle);
+            _busy = false;
         });
     }
 
@@ -216,6 +246,13 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private void StartRecording()
     {
+        if (Audio.AudioDevices.GetInputDevices().Count == 0)
+        {
+            Log.Error("Start recording aborted: no input device present.");
+            ShowError("No microphone found — connect one and try again.");
+            return;
+        }
+
         try
         {
             var autoStop = !_settings.HoldToTalk && _settings.AutoStopEnabled;
@@ -224,6 +261,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
         catch (Exception ex)
         {
+            Log.Error("Could not start recording", ex);
             ShowError($"Could not start recording: {ex.Message}");
             SetState(AppState.Idle);
         }
@@ -236,8 +274,11 @@ internal sealed class TrayApplicationContext : ApplicationContext
         try
         {
             var samples = await _audio.StopAndGetSamplesAsync().ConfigureAwait(false);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var text = await _stt.TranscribeAsync(samples).ConfigureAwait(false);
+            sw.Stop();
             text = TextRules.Apply(text, _settings.Replacements, _settings.SpokenCommandsEnabled);
+            Log.Info($"Transcribed {StatsData.CountWords(text)} words in {sw.Elapsed.TotalSeconds:F2}s ({samples.Length / 16000.0:F1}s audio).");
 
             if (!string.IsNullOrWhiteSpace(text))
             {
@@ -255,6 +296,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         }
         catch (Exception ex)
         {
+            Log.Error("Transcription failed", ex);
             _window.BeginInvoke(() => ShowError($"Transcription failed: {ex.Message}"));
         }
         finally
@@ -304,11 +346,16 @@ internal sealed class TrayApplicationContext : ApplicationContext
             }
 
             await _stt.LoadAsync().ConfigureAwait(false);
+            Log.Info($"Speech model ready ({_settings.ModelType}).");
             _window.BeginInvoke(() => _trayIcon.Text = $"Voice to Text {VersionLabel} — ready ({_settings.Hotkey.Describe()})");
         }
         catch (Exception ex)
         {
-            _window.BeginInvoke(() => ShowError($"Speech model failed to load: {ex.Message}"));
+            Log.Error("Speech model load/warm-up failed", ex);
+            var msg = !ModelManager.IsModelPresent(_settings.ModelType)
+                ? "Couldn't download the speech model — check your internet connection."
+                : "Speech model failed to load — see the log (About → Open log folder).";
+            _window.BeginInvoke(() => ShowError(msg));
         }
     }
 

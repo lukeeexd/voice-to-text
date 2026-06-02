@@ -21,6 +21,10 @@ public interface IAudioSource
     /// </summary>
     event Action<float>? LevelChanged;
 
+    /// <summary>Raised on the capture thread when recording stops because of a device error
+    /// (e.g. the mic was unplugged). Not raised on a normal user/auto stop.</summary>
+    event Action<Exception>? RecordingFailed;
+
     /// <summary>Begin capturing from the given device id (null = system default).</summary>
     /// <param name="autoStop">If true, watch for trailing silence and raise <see cref="SilenceDetected"/>.</param>
     /// <param name="autoStopSilenceSeconds">Seconds of silence after speech before auto-stopping.</param>

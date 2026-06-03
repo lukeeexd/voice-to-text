@@ -202,7 +202,7 @@ internal sealed class HistoryPage : UserControl
                 copyLeft = link.Left;
             }
 
-        meta.SetBounds(12, 8, Math.Max(40, copyLeft - 12 - 8), meta.PreferredHeight);
+        meta.SetBounds(meta.Left, 8, Math.Max(40, copyLeft - meta.Left - 8), meta.PreferredHeight);
     }
 
     private static string FormatTime(DateTime t)

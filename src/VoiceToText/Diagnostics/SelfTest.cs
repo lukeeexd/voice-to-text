@@ -344,6 +344,29 @@ internal static class SelfTest
         Pass("legacy entry has null seconds", legacyStore?.Entries[0].TranscribeSeconds is null);
         Pass("legacy entry has null model", legacyStore?.Entries[0].Model is null);
 
+        // UI: rows must build + lay out for both a new-style and a legacy entry, regardless of this
+        // machine's real settings/history (regression guard for the LayoutRow meta/Copy layout —
+        // --dashwindow only exercises it when the machine happens to have history enabled + entries).
+        // Seeds Data.Entries in-memory only; Record/Clear are never called, so nothing is persisted.
+        try
+        {
+            var uiSettings = new AppSettings { HistoryEnabled = true };
+            var uiHistory = new HistoryService();
+            uiHistory.Data.Entries.Clear();
+            uiHistory.Data.Entries.Add(new HistoryEntry { Time = DateTime.Now, App = "Test", Text = "hello world", Words = 2, TranscribeSeconds = 0.3, Model = "LargeV3Turbo" });
+            uiHistory.Data.Entries.Add(new HistoryEntry { Time = DateTime.Now, App = "Test", Text = "legacy entry", Words = 2 });
+            using var page = new HistoryPage(uiHistory, uiSettings) { Size = new Size(700, 500) };
+            page.Reload();
+            var list = page.Controls.OfType<FlowLayoutPanel>().Single();
+            Pass("ui rows constructed", list.Controls.Count == 2, $"={list.Controls.Count}");
+            var meta = list.Controls[0].Controls.OfType<Label>().First(l => l is not LinkLabel && l.Top == 8);
+            Pass("ui meta shows model + seconds", meta.Text.Contains("Large v3 Turbo") && meta.Text.Contains("0.3s"), meta.Text);
+        }
+        catch (Exception ex)
+        {
+            Pass("ui rows constructed", false, $"{ex.GetType().Name}: {ex.Message}");
+        }
+
         log.AppendLine(allPass ? "ALL HISTORY TESTS PASSED" : "SOME HISTORY TESTS FAILED");
         var result = log.ToString();
         File.WriteAllText(outputPath, result);

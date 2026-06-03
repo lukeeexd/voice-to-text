@@ -54,7 +54,7 @@ public sealed class HistoryService
     }
 
     /// <summary>Record one dictation and persist. Called only when history is enabled.</summary>
-    public void Record(string text, int words, string? app, double? transcribeSeconds = null)
+    public void Record(string text, int words, string? app, double? transcribeSeconds = null, string? model = null)
     {
         Data.Add(new HistoryEntry
         {
@@ -63,6 +63,7 @@ public sealed class HistoryService
             Text = text,
             Words = words,
             TranscribeSeconds = transcribeSeconds,
+            Model = model,
         });
         Save();
     }

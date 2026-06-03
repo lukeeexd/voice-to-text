@@ -17,4 +17,7 @@ public sealed class HistoryEntry
 
     /// <summary>Seconds the transcription took; null for entries recorded before v0.8.6.</summary>
     public double? TranscribeSeconds { get; set; }
+
+    /// <summary>Canonical engine model name (e.g. "LargeV3Turbo"); null for entries recorded before v0.8.7.</summary>
+    public string? Model { get; set; }
 }

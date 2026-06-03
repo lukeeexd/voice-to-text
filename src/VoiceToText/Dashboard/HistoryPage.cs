@@ -2,6 +2,7 @@ using System.Drawing;
 using VoiceToText.Dashboard.Controls;
 using VoiceToText.History;
 using VoiceToText.Settings;
+using VoiceToText.Stt;
 
 namespace VoiceToText.Dashboard;
 
@@ -147,11 +148,13 @@ internal sealed class HistoryPage : UserControl
 
         var meta = new Label
         {
-            AutoSize = true,
+            AutoSize = false,
+            AutoEllipsis = true,
             Location = new Point(12, 8),
             ForeColor = Theme.TextSecondary,
             Font = Theme.Caption,
             Text = $"{FormatTime(entry.Time)}   ·   {entry.App}   ·   {entry.Words} words"
+                 + (entry.Model is { Length: > 0 } m ? $"   ·   {ModelOption.ShortLabel(m)}" : "")
                  + (entry.TranscribeSeconds is double s ? $"   ·   {s:0.0}s" : ""),
         };
 
@@ -176,21 +179,30 @@ internal sealed class HistoryPage : UserControl
         card.Controls.Add(meta);
         card.Controls.Add(copy);
         card.Controls.Add(body);
-        card.Tag = body;
+        card.Tag = (body, meta);
         LayoutRow(card);
         return card;
     }
 
-    // Width-track + height-to-wrapped-text for one row; place Copy at the row's top-right.
+    // Width-track + height-to-wrapped-text for one row; place Copy at the row's top-right,
+    // then fit the meta line to the space left of Copy so a long line ellipsizes instead
+    // of ever running under the Copy link.
     private void LayoutRow(Panel card)
     {
         card.Width = RowWidth();
-        var body = (Label)card.Tag!;
+        var (body, meta) = ((Label Body, Label Meta))card.Tag!;
         body.MaximumSize = new Size(Math.Max(40, card.Width - 24), 0);
         card.Height = body.Top + body.PreferredHeight + 12;
+
+        int copyLeft = card.Width;
         foreach (Control c in card.Controls)
             if (c is LinkLabel link)
+            {
                 link.Location = new Point(card.Width - link.PreferredWidth - 14, 8);
+                copyLeft = link.Left;
+            }
+
+        meta.SetBounds(12, 8, Math.Max(40, copyLeft - 12 - 8), meta.PreferredHeight);
     }
 
     private static string FormatTime(DateTime t)

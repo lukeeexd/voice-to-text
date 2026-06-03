@@ -328,18 +328,21 @@ internal static class SelfTest
         capped.Clear();
         Pass("clear empties", capped.Entries.Count == 0, $"={capped.Entries.Count}");
 
-        // Round-trip: TranscribeSeconds survives serialize -> deserialize.
+        // Round-trip: TranscribeSeconds + Model survive serialize -> deserialize.
         var rtStore = new HistoryStore();
-        rtStore.Add(new HistoryEntry { Text = "rt", Words = 1, TranscribeSeconds = 0.34 });
+        rtStore.Add(new HistoryEntry { Text = "rt", Words = 1, TranscribeSeconds = 0.34, Model = "LargeV3Turbo" });
         var json = JsonSerializer.Serialize(rtStore);
         var rtBack = JsonSerializer.Deserialize<HistoryStore>(json);
         var rtSeconds = rtBack?.Entries[0].TranscribeSeconds;
         Pass("transcribe seconds round-trip", rtSeconds is double rs && Math.Abs(rs - 0.34) < 1e-9, $"={rtSeconds?.ToString() ?? "null"}");
+        var rtModel = rtBack?.Entries[0].Model;
+        Pass("model round-trip", rtModel == "LargeV3Turbo", $"={rtModel ?? "null"}");
 
-        // Legacy JSON: an entry with no TranscribeSeconds field loads as null.
+        // Legacy JSON: an entry with no TranscribeSeconds/Model field loads as null.
         const string legacyJson = "{\"Entries\":[{\"Time\":\"2026-06-03T14:32:00\",\"App\":\"Discord\",\"Text\":\"hello\",\"Words\":1}]}";
         var legacyStore = JsonSerializer.Deserialize<HistoryStore>(legacyJson);
         Pass("legacy entry has null seconds", legacyStore?.Entries[0].TranscribeSeconds is null);
+        Pass("legacy entry has null model", legacyStore?.Entries[0].Model is null);
 
         log.AppendLine(allPass ? "ALL HISTORY TESTS PASSED" : "SOME HISTORY TESTS FAILED");
         var result = log.ToString();

@@ -307,13 +307,14 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 var words = StatsData.CountWords(text);
                 var seconds = samples.Length / 16000.0;
                 var transcribeSeconds = sw.Elapsed.TotalSeconds;
+                var model = _settings.ModelType.ToString();
                 _window.BeginInvoke(() =>
                 {
                     var app = NativeForeground.GetForegroundProcessName();
                     _injector.Inject(text);
                     _stats.Record(words, seconds, app);
                     if (_settings.HistoryEnabled)
-                        _history.Record(text, words, app, transcribeSeconds);
+                        _history.Record(text, words, app, transcribeSeconds, model);
                 });
             }
         }

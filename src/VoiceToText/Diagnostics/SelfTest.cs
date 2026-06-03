@@ -504,6 +504,62 @@ internal static class SelfTest
         Pass("empty unchanged", TextRules.Apply("", none, true) == "");
         Pass("trims output", TextRules.Apply("  hello world  ", none, false) == "hello world");
 
+        // UI: the page must build, theme its grid (3 columns), and render the spoken "new line"
+        // command as a real line break in the preview box (the v0.8.8 CRLF newline fix). Settings are
+        // in-memory only and Save is never called, so nothing on this machine is touched.
+        try
+        {
+            var uiSettings = new AppSettings { SpokenCommandsEnabled = true };
+            using var page = new TextRulesPage(uiSettings) { Size = new Size(700, 600) };
+
+            TextBox? FindEditableSingleLine(Control parent)
+            {
+                foreach (Control c in parent.Controls)
+                {
+                    if (c is TextBox { ReadOnly: false, Multiline: false } tb) return tb;
+                    var nested = FindEditableSingleLine(c);
+                    if (nested is not null) return nested;
+                }
+                return null;
+            }
+
+            var input = FindEditableSingleLine(page);
+            Pass("ui preview input found", input is not null);
+            if (input is not null) input.Text = "a new line b";
+
+            TextBox? FindReadonlyMultiline(Control parent)
+            {
+                foreach (Control c in parent.Controls)
+                {
+                    if (c is TextBox { ReadOnly: true, Multiline: true } tb) return tb;
+                    var nested = FindReadonlyMultiline(c);
+                    if (nested is not null) return nested;
+                }
+                return null;
+            }
+
+            var output = FindReadonlyMultiline(page);
+            Pass("ui preview output renders newline", output is not null && output.Text.Contains(Environment.NewLine), Vis(output?.Text ?? "null"));
+
+            DataGridView? FindGrid(Control parent)
+            {
+                foreach (Control c in parent.Controls)
+                {
+                    if (c is DataGridView dgv) return dgv;
+                    var nested = FindGrid(c);
+                    if (nested is not null) return nested;
+                }
+                return null;
+            }
+
+            var grid = FindGrid(page);
+            Pass("ui grid has 3 columns", grid is not null && grid.Columns.Count == 3, $"={grid?.Columns.Count.ToString() ?? "null"}");
+        }
+        catch (Exception ex)
+        {
+            Pass("ui preview output renders newline", false, $"{ex.GetType().Name}: {ex.Message}");
+        }
+
         log.AppendLine(allPass ? "ALL TEXTRULES TESTS PASSED" : "SOME TEXTRULES TESTS FAILED");
         var result = log.ToString();
         File.WriteAllText(outputPath, result);

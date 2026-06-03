@@ -23,6 +23,12 @@ internal sealed class DarkField : Panel
     protected override void OnLayout(LayoutEventArgs e)
     {
         base.OnLayout(e);
+        // Multiline text boxes fill the field with a small inset; single-line controls sit centered.
+        if (_inner is TextBox { Multiline: true })
+        {
+            _inner.SetBounds(10, 6, Math.Max(10, Width - 20), Math.Max(10, Height - 12));
+            return;
+        }
         int ih = _inner.PreferredSize.Height > 0 ? _inner.PreferredSize.Height : _inner.Height;
         _inner.SetBounds(10, Math.Max(1, (Height - ih) / 2), Math.Max(10, Width - 20), ih);
     }

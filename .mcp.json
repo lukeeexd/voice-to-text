@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "microsoft-learn": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp"
+    },
+    "nuget": {
+      "type": "stdio",
+      "command": "C:\\Users\\Luke\\.dotnet\\dnx.cmd",
+      "args": ["NuGet.Mcp.Server", "--source", "https://api.nuget.org/v3/index.json", "--yes"],
+      "env": {
+        "DOTNET_ROOT": "C:\\Users\\Luke\\.dotnet"
+      }
+    }
+  }
+}

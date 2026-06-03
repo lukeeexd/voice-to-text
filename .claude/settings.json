@@ -1,5 +1,43 @@
 {
   "worktree": {
     "bgIsolation": "none"
+  },
+  "permissions": {
+    "deny": [
+      "Bash(*--updatecheck*VoiceToText-Releases*)",
+      "Bash(*VoiceToText-Releases*--updatecheck*)",
+      "PowerShell(*--updatecheck*VoiceToText-Releases*)",
+      "PowerShell(*VoiceToText-Releases*--updatecheck*)"
+    ]
+  },
+  "enabledMcpjsonServers": ["microsoft-learn", "nuget"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"$env:CLAUDE_PROJECT_DIR\\.claude\\hooks\\guard-updatecheck.ps1\"",
+            "shell": "powershell",
+            "timeout": 20,
+            "statusMessage": "Checking for unsafe --updatecheck…"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"$env:CLAUDE_PROJECT_DIR\\.claude\\hooks\\warn-sweep.ps1\"",
+            "shell": "powershell",
+            "timeout": 300,
+            "statusMessage": "Clean-build warning sweep…"
+          }
+        ]
+      }
+    ]
   }
 }

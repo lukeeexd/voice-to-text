@@ -14,4 +14,7 @@ public sealed class HistoryEntry
 
     /// <summary>Word count of <see cref="Text"/>.</summary>
     public int Words { get; set; }
+
+    /// <summary>Seconds the transcription took; null for entries recorded before v0.8.6.</summary>
+    public double? TranscribeSeconds { get; set; }
 }

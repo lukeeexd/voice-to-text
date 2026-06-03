@@ -54,7 +54,7 @@ public sealed class HistoryService
     }
 
     /// <summary>Record one dictation and persist. Called only when history is enabled.</summary>
-    public void Record(string text, int words, string? app)
+    public void Record(string text, int words, string? app, double? transcribeSeconds = null)
     {
         Data.Add(new HistoryEntry
         {
@@ -62,6 +62,7 @@ public sealed class HistoryService
             App = string.IsNullOrWhiteSpace(app) ? "Unknown" : app!,
             Text = text,
             Words = words,
+            TranscribeSeconds = transcribeSeconds,
         });
         Save();
     }

@@ -151,7 +151,8 @@ internal sealed class HistoryPage : UserControl
             Location = new Point(12, 8),
             ForeColor = Theme.TextSecondary,
             Font = Theme.Caption,
-            Text = $"{FormatTime(entry.Time)}   ·   {entry.App}   ·   {entry.Words} words",
+            Text = $"{FormatTime(entry.Time)}   ·   {entry.App}   ·   {entry.Words} words"
+                 + (entry.TranscribeSeconds is double s ? $"   ·   {s:0.0}s" : ""),
         };
 
         var copy = new LinkLabel

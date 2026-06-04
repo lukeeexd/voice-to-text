@@ -148,6 +148,19 @@ internal static class SelfTest
         Pass("sound cue: start and stop are a distinct pair",
             startCue.Length == stopCue.Length && !startCue.SequenceEqual(stopCue));
 
+        // DarkSlider: pure Value clamping (0..1) — no painting, no devices.
+        using (var slider = new VoiceToText.Dashboard.Controls.DarkSlider())
+        {
+            slider.Value = -1; Pass("slider: clamps below 0 to 0", slider.Value == 0.0, $"={slider.Value}");
+            slider.Value = 2;  Pass("slider: clamps above 1 to 1", slider.Value == 1.0, $"={slider.Value}");
+            slider.Value = 0.5; Pass("slider: midpoint preserved", Math.Abs(slider.Value - 0.5) < 1e-9, $"={slider.Value}");
+            int raised = 0;
+            slider.ValueChanged += (_, _) => raised++;
+            slider.Value = 0.5; // unchanged
+            slider.Value = 0.75; // changed
+            Pass("slider: ValueChanged only on change", raised == 1, $"raised={raised}");
+        }
+
         log.AppendLine(allPass ? "ALL WIDGET TESTS PASSED" : "SOME WIDGET TESTS FAILED");
         var result = log.ToString();
         File.WriteAllText(outputPath, result);

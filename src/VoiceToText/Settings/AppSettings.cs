@@ -66,6 +66,9 @@ public sealed class AppSettings
     /// <summary>Play a short sound when dictation starts and stops. On by default.</summary>
     public bool SoundCuesEnabled { get; set; } = true;
 
+    /// <summary>Loudness of the start/stop sound cues, 0..1. 1 = the original (current) loudness.</summary>
+    public double SoundCuesVolume { get; set; } = 1.0;
+
     /// <summary>Whether the first-run welcome has been shown. Set once on first launch.</summary>
     public bool OnboardingCompleted { get; set; } = false;
 

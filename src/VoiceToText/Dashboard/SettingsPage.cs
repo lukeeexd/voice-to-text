@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Globalization;
 using VoiceToText.App;
 using VoiceToText.Audio;
 using VoiceToText.Dashboard.Controls;
@@ -29,6 +30,9 @@ internal sealed class SettingsPage : UserControl
     private readonly DarkNumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M };
     private readonly ToggleSwitch _overlayCheck = new();
     private readonly ToggleSwitch _soundCheck = new();
+    private readonly DarkSlider _volumeSlider = new() { Width = 160 };
+    private readonly Label _volumeLabel = new() { AutoSize = true, ForeColor = Theme.TextSecondary, Font = Theme.Caption };
+    private readonly SoundCues _previewCues = new();
     private readonly ToggleSwitch _historyCheck = new();
     private readonly DarkNumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5 };
     private readonly ToggleSwitch _autoUpdateCheck = new();
@@ -85,11 +89,14 @@ internal sealed class SettingsPage : UserControl
         _silenceUpDown.Value = (decimal)Math.Clamp(_settings.AutoStopSilenceSeconds, 0.3, 10.0);
         _overlayCheck.Checked = _settings.ShowOverlay;
         _soundCheck.Checked = _settings.SoundCuesEnabled;
+        _volumeSlider.Value = Math.Clamp(_settings.SoundCuesVolume, 0.0, 1.0);
+        UpdateVolumeLabel();
         _historyCheck.Checked = _settings.HistoryEnabled;
         _wpmUpDown.Value = (decimal)Math.Clamp(_settings.TypingSpeedWpm, 10, 300);
         _autoUpdateCheck.Checked = _settings.AutoUpdateEnabled;
         _updateFolderBox.Text = _settings.UpdateFeedFolder;
         UpdateAutoStopEnabled();
+        UpdateSoundEnabled();
         UpdateHint();
         _loading = false;
         _baseline = Snapshot();
@@ -114,6 +121,19 @@ internal sealed class SettingsPage : UserControl
         var silence = RowComposite(_silenceUpDown, "seconds");
         var wpm = RowComposite(_wpmUpDown, "WPM");
 
+        // Volume: the slider + a right-side NN% label, shown as one "control" in a row.
+        _volumeSlider.ValueChanged += (_, _) => { UpdateVolumeLabel(); UpdateDirty(); };
+        _volumeSlider.MouseUp += (_, _) =>
+        {
+            if (_soundCheck.Checked)
+            {
+                _previewCues.Volume = (float)_volumeSlider.Value;
+                _previewCues.PlayStart();
+            }
+        };
+        UpdateVolumeLabel();
+        var volume = VolumeComposite();
+
         var browseButton = new DarkButton { Variant = DarkButtonVariant.Secondary, Text = "Browse…", Size = new Size(84, 30) };
         browseButton.Click += OnBrowseUpdateFolder;
         var folderField = new DarkField(_updateFolderBox, 232);
@@ -137,6 +157,7 @@ internal sealed class SettingsPage : UserControl
         var feedback = new SectionCard("Feedback & privacy") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
         feedback.AddRow("Show on-screen indicator while dictating", _overlayCheck);
         feedback.AddRow("Play a sound when dictation starts and stops", _soundCheck);
+        feedback.AddRow("Volume", volume);
         feedback.AddRow("Save recent dictation history", _historyCheck, new Label { Text = "Kept only on this PC.", ForeColor = Theme.TextSecondary, Font = Theme.Caption });
 
         var general = new SectionCard("General") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
@@ -203,7 +224,7 @@ internal sealed class SettingsPage : UserControl
         _autoStopCheck.CheckedChanged += (_, _) => UpdateDirty();
         _silenceUpDown.ValueChanged += (_, _) => UpdateDirty();
         _overlayCheck.CheckedChanged += (_, _) => UpdateDirty();
-        _soundCheck.CheckedChanged += (_, _) => UpdateDirty();
+        _soundCheck.CheckedChanged += (_, _) => { UpdateSoundEnabled(); UpdateDirty(); };
         _historyCheck.CheckedChanged += (_, _) => UpdateDirty();
         _wpmUpDown.ValueChanged += (_, _) => UpdateDirty();
         _autoUpdateCheck.CheckedChanged += (_, _) => UpdateDirty();
@@ -223,6 +244,21 @@ internal sealed class SettingsPage : UserControl
         return panel;
     }
 
+    // A composite: the volume slider followed by a right-side NN% label, used as one row "control".
+    private Panel VolumeComposite()
+    {
+        _volumeSlider.Location = new Point(0, 0);
+        _volumeLabel.Location = new Point(_volumeSlider.Width + 10, (_volumeSlider.Height - 14) / 2 + 2);
+        var panel = new Panel { BackColor = Theme.CardBg, Height = Math.Max(_volumeSlider.Height, 20) };
+        panel.Controls.Add(_volumeSlider);
+        panel.Controls.Add(_volumeLabel);
+        panel.Width = _volumeSlider.Width + 10 + 44;
+        return panel;
+    }
+
+    private void UpdateVolumeLabel() =>
+        _volumeLabel.Text = ((int)Math.Round(_volumeSlider.Value * 100)).ToString(CultureInfo.CurrentCulture) + "%";
+
     // Auto-stop applies only in press-to-toggle mode; the silence spinner only when it's also checked.
     private void UpdateAutoStopEnabled()
     {
@@ -230,6 +266,9 @@ internal sealed class SettingsPage : UserControl
         _autoStopCheck.Enabled = !hold;
         _silenceUpDown.Enabled = !hold && _autoStopCheck.Checked;
     }
+
+    // The volume slider is meaningful only when the sound cues are on; grey it out otherwise.
+    private void UpdateSoundEnabled() => _volumeSlider.Enabled = _soundCheck.Checked;
 
     private void LoadDevices()
     {
@@ -321,6 +360,7 @@ internal sealed class SettingsPage : UserControl
         _silenceUpDown.Value,
         _overlayCheck.Checked,
         _soundCheck.Checked,
+        (int)Math.Round(_volumeSlider.Value * 100), // stable token: avoids float-drift dirtiness
         _historyCheck.Checked,
         _wpmUpDown.Value,
         _autoUpdateCheck.Checked,
@@ -353,6 +393,7 @@ internal sealed class SettingsPage : UserControl
         _settings.AutoStopSilenceSeconds = (double)_silenceUpDown.Value;
         _settings.ShowOverlay = _overlayCheck.Checked;
         _settings.SoundCuesEnabled = _soundCheck.Checked;
+        _settings.SoundCuesVolume = _volumeSlider.Value;
         _settings.HistoryEnabled = _historyCheck.Checked;
         _settings.TypingSpeedWpm = (double)_wpmUpDown.Value;
         _settings.AutoUpdateEnabled = _autoUpdateCheck.Checked;
@@ -363,5 +404,12 @@ internal sealed class SettingsPage : UserControl
         _baseline = Snapshot();
         UpdateDirty();
         SettingsSaved?.Invoke();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            _previewCues.Dispose();
+        base.Dispose(disposing);
     }
 }

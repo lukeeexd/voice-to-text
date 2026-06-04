@@ -1,4 +1,5 @@
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using VoiceToText.Diagnostics;
 
 namespace VoiceToText.Audio;
@@ -30,11 +31,23 @@ internal sealed class SoundCues : IDisposable
     private readonly List<IWavePlayer> _active = new();
     private readonly object _lock = new();
     private bool _disposed;
+    private float _volume = 1f;
 
     public SoundCues()
     {
         _startPcm = RenderCue(new[] { 660.0, 880.0 }); // rising
         _stopPcm = RenderCue(new[] { 880.0, 660.0 });  // falling mirror
+    }
+
+    /// <summary>
+    /// Output level, 0..1 (clamped). 1 = the buffers' native loudness (today's sound exactly);
+    /// scales down from there via a <see cref="VolumeSampleProvider"/> — no system-volume side
+    /// effects. Read/written under the play lock.
+    /// </summary>
+    public float Volume
+    {
+        get { lock (_lock) return _volume; }
+        set { lock (_lock) _volume = Math.Clamp(value, 0f, 1f); }
     }
 
     /// <summary>Play the rising start cue. Never throws.</summary>
@@ -88,8 +101,10 @@ internal sealed class SoundCues : IDisposable
                 if (_disposed) return;
                 if (_active.Count >= 4) return; // bound concurrent players if the hotkey is spammed (cues are ~120 ms)
                 var stream = new RawSourceWaveStream(new MemoryStream(pcm), Format);
+                // Scale the output device-independently; Volume = 1 reproduces the buffers verbatim.
+                ISampleProvider src = new VolumeSampleProvider(stream.ToSampleProvider()) { Volume = _volume };
                 player = new WaveOutEvent();
-                player.Init(stream);
+                player.Init(src);
                 player.PlaybackStopped += (_, _) =>
                 {
                     lock (_lock) _active.Remove(player);

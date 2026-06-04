@@ -281,7 +281,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             var autoStop = !_settings.HoldToTalk && _settings.AutoStopEnabled;
             _audio.Start(_settings.InputDeviceId, autoStop, _settings.AutoStopSilenceSeconds);
             SetState(AppState.Recording);
-            if (_settings.SoundCuesEnabled) _cues.PlayStart();
+            if (_settings.SoundCuesEnabled) { _cues.Volume = (float)_settings.SoundCuesVolume; _cues.PlayStart(); }
         }
         catch (Exception ex)
         {
@@ -295,7 +295,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     {
         // Play the stop cue immediately on release/stop, before capture ends, so it never bleeds
         // into the captured audio (covers hold-release + toggle-stop — both call this).
-        if (_settings.SoundCuesEnabled) _cues.PlayStop();
+        if (_settings.SoundCuesEnabled) { _cues.Volume = (float)_settings.SoundCuesVolume; _cues.PlayStop(); }
         _busy = true;
         SetState(AppState.Transcribing);
         try

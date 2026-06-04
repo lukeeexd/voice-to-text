@@ -10,7 +10,7 @@
     <AssemblyName>VoiceToText</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>0.8.11</Version>
+    <Version>0.8.12</Version>
     <!-- Keep InformationalVersion exactly the SemVer (no +git-sha) so the updater can parse it. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>

@@ -3,7 +3,16 @@
 A local, offline voice-to-text (dictation) app for Windows 11. It lives in the
 system tray; a global hotkey toggles dictation, audio from the selected
 microphone is transcribed locally with Whisper, and the text is typed into
-whatever window has focus. Everything runs on-device — no cloud, no API keys.
+whatever window has focus. Everything runs on-device — no cloud, no API keys,
+and your audio never leaves your PC.
+
+## Install
+
+Download the latest `VoiceToText-Setup-x.y.z.exe` from
+**[Releases](../../releases/latest)** and run it (per-user install, no admin
+needed). A first-run wizard picks your microphone and hotkey; the speech model
+(~1.6 GB) downloads once and everything is offline from then on. Updates are
+offered automatically from this repository's releases when enabled in Settings.
 
 ## Stack
 
@@ -37,15 +46,16 @@ On first launch the `large-v3-turbo` model (~1.6 GB) is downloaded once to
 ### Usage
 
 - The tray icon is **blue** (idle), **red** (recording), **amber** (transcribing).
-- Press the hotkey (default **Ctrl + Shift + Space**) to start and speak. By
-  default it **auto-stops after a pause** (configurable in Settings); you can
-  also press the hotkey again to stop immediately. The transcription is then
-  pasted at your cursor.
-- Double-click the tray icon (or right-click → Settings) to pick a microphone,
-  change the hotkey, toggle **start on login**, and enable **auto-update**.
+- Press your hotkey to dictate — **press-to-toggle** or **hold-to-talk**
+  (pick in Settings). Press-to-toggle can **auto-stop after a pause**; the
+  transcription is pasted at your cursor.
+- Double-click the tray icon for the dashboard: usage stats, Settings
+  (microphone, speech model, hotkey, activation), **Text rules**
+  (find→replace corrections + spoken commands like "new line"), opt-in
+  dictation **History**, and About/diagnostics.
 - The hotkey can be a single key (e.g. an extra/macro key or `F13`) or a
   modifier combo. Esc/Tab/Enter stay reserved for the dialog.
-- Tray menu → **Check for updates…** checks the configured update folder now.
+- Tray menu → **Check for updates…** checks the configured update source now.
 
 ### Verify the engine (no mic needed)
 
@@ -95,40 +105,43 @@ The installer version is read automatically from the published exe, so just bump
 
 ## Auto-update
 
-The app can update itself from a **folder you designate** (a local path or a
-network/shared drive) — no server, nothing published online. Enable it in
-Settings (off by default) and pick the folder. On startup and via tray →
-**Check for updates…**, the app reads `latest.json` from that folder; if it names
-a newer version it offers to install it, copies the setup locally (verifying
-SHA-256 if provided), and a small relauncher runs the installer and reopens the
-app. Your settings and model in `%APPDATA%\VoiceToText` are untouched.
+The app updates itself from a configurable **update source** — by default this
+repository's GitHub Releases
+(`https://github.com/lukeeexd/voice-to-text/releases/latest/download`), but a
+local/UNC **folder** works too (handy for development). Enable it in Settings
+(off by default). On startup and via tray → **Check for updates…**, the app
+reads `latest.json` from the source; if it names a newer version it offers to
+install it, downloads/copies the setup to a local staging dir (verifying its
+SHA-256), and a small relauncher runs the installer and reopens the app. Your
+settings and model in `%APPDATA%\VoiceToText` are untouched.
 
-> ⚠️ The app runs the installer it finds in that folder, so only use a folder you
+> ⚠️ The app runs the installer the source provides, so only use a source you
 > control and trust. The installer isn't code-signed yet (see roadmap), so the
 > feature is off by default and shows a one-time consent prompt when enabled.
 
-### Publishing an update to the feed
+### Publishing a release
 
 ```powershell
 # bump <Version> in src\VoiceToText\VoiceToText.csproj, then:
 .\publish.ps1
 iscc installer\VoiceToText.iss
-# copy the setup into your feed folder and write the manifest:
-Copy-Item installer\Output\VoiceToText-Setup.exe <feed>\VoiceToText-Setup-<ver>.exe
+# rename the setup with its version and compute its hash, write latest.json, then:
+gh release create v<ver> VoiceToText-Setup-<ver>.exe latest.json --title "v<ver>" --notes "What changed"
 ```
 
-`<feed>\latest.json`:
+`latest.json` (uploaded as a release asset next to the setup):
 
 ```json
 {
-  "Version": "0.3.0",
-  "SetupFileName": "VoiceToText-Setup-0.3.0.exe",
-  "Sha256": "<sha256 of the setup exe>",
+  "Version": "0.9.0",
+  "SetupFileName": "VoiceToText-Setup-0.9.0.exe",
+  "Sha256": "<lowercase sha256 of the setup exe>",
   "ReleaseNotes": "What changed"
 }
 ```
 
-(`SetupFileName` must be a plain file name living in the feed folder.)
+(`SetupFileName` must be a plain file name living next to the manifest — the
+updater rejects paths.)
 
 ## Known limitations
 
@@ -142,9 +155,10 @@ Copy-Item installer\Output\VoiceToText-Setup.exe <feed>\VoiceToText-Setup-<ver>.
 
 - Upgrade auto-stop to Silero VAD (more robust against background noise than the
   current energy-based detector)
-- Hold-to-talk mode
 - Live/streaming partial results
-- Model picker + downloader UI
 - Code-sign the installer + verify Authenticode/publisher in the updater (so
-  auto-update trusts the binary, not just a same-folder hash)
-- Post-processing (punctuation/formatting, custom vocabulary, voice commands)
+  auto-update trusts the binary, not just a manifest hash)
+
+## License
+
+[MIT](LICENSE)

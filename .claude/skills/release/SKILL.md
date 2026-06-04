@@ -1,12 +1,18 @@
 ---
 name: release
-description: Ship a VoiceToText release end-to-end - bump <Version>, build the self-contained exe, compile the Inno Setup installer, publish to the update feed (D:\ClaudeCode\VoiceToText-Releases) with a SHA-256 manifest, and verify. Use after any version bump or when asked to release, ship, or publish an update.
+description: Ship a VoiceToText release end-to-end - bump <Version>, build the self-contained exe, compile the Inno Setup installer, publish to BOTH update feeds (GitHub Releases = canonical for users; D:\ClaudeCode\VoiceToText-Releases = local/dev) with a SHA-256 manifest, and verify. Use after any version bump or when asked to release, ship, or publish an update.
 ---
 
 # Release VoiceToText
 
-The update feed is `D:\ClaudeCode\VoiceToText-Releases`. Standing instruction: after
-ANY version bump, ship to the feed — do not wait to be asked.
+There are TWO feeds — publish to BOTH on every release:
+
+- **GitHub Releases** (canonical — what users' apps poll):
+  `https://github.com/lukeeexd/voice-to-text/releases/latest/download` serves the
+  newest release's assets (`latest.json` + the setup exe).
+- **Local feed** (dev/test): `D:\ClaudeCode\VoiceToText-Releases`.
+
+Standing instruction: after ANY version bump, ship — do not wait to be asked.
 
 ## Steps (order matters)
 
@@ -37,14 +43,26 @@ ANY version bump, ship to the feed — do not wait to be asked.
    `SetupFileName` must be a bare filename (no path separators — the updater rejects
    anything else). `Version` must exactly match the csproj bump; this is the only
    hand-typed copy of the version and the #1 drift point.
-7. **Verify** (never with `--updatecheck` against the feed!):
+7. **GitHub release** (canonical feed) — from the repo root:
+
+   ```powershell
+   gh release create v<ver> "D:\ClaudeCode\VoiceToText-Releases\VoiceToText-Setup-<ver>.exe" `
+     "D:\ClaudeCode\VoiceToText-Releases\latest.json" --title "v<ver>" --notes "<what changed>"
+   ```
+
+   Upload the SAME feed-named exe + the SAME latest.json written in step 6 (the
+   manifest's `Sha256` must match the uploaded exe — never re-run iscc in between).
+   Push `main` first if unpushed (`git push`).
+8. **Verify** (never with `--updatecheck` against the feed!):
    - Parse `latest.json` back; `Version` == csproj `<Version>`; `SetupFileName` exists
      in the feed folder.
    - Recompute the SHA-256 of the feed exe and compare to the manifest.
+   - GitHub side: `Invoke-WebRequest https://github.com/lukeeexd/voice-to-text/releases/latest/download/latest.json`
+     parses and matches the local manifest (allow a minute for asset propagation).
    - Run the built app's no-arg self-test: `<exe> --updatecheck` (NO argument — it
      uses a `%TEMP%` feed) and check `updatecheck-output.txt` + exit code 0.
    - Optionally launch the `release-verifier` agent for an independent check.
-8. **Commit** — `vX.Y.Z: <summary>` per repo convention.
+9. **Commit** — `vX.Y.Z: <summary>` per repo convention, and `git push`.
 
 ## Hard rules
 

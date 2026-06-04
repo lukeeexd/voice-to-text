@@ -667,6 +667,15 @@ internal static class SelfTest
         var higher = UpdateChecker.Decide(true, "x", cur, M("1.0.1"));
         Pass("higher => update available", higher.Decision == UpdateDecision.UpdateAvailable && higher.AvailableVersion == new Version(1, 0, 1, 0));
 
+        // --- Pure feed-kind detection (no network is ever touched in self-tests) ---
+        Pass("https feed detected", UpdateService.IsHttpFeed("https://github.com/x/y/releases/latest/download"));
+        Pass("http feed detected", UpdateService.IsHttpFeed("http://example.test/feed"));
+        Pass("https feed detected with whitespace", UpdateService.IsHttpFeed("  https://example.test/feed  "));
+        Pass("local folder is not an http feed", !UpdateService.IsHttpFeed(@"D:\Some\Folder"));
+        Pass("unc share is not an http feed", !UpdateService.IsHttpFeed(@"\\server\share"));
+        Pass("empty is not an http feed", !UpdateService.IsHttpFeed(""));
+        Pass("null is not an http feed", !UpdateService.IsHttpFeed(null));
+
         // --- VersionParsing ---
         Pass("normalize 1.2", VersionParsing.TryNormalize("1.2") == new Version(1, 2, 0, 0));
         Pass("normalize 1.2.3", VersionParsing.TryNormalize("1.2.3") == new Version(1, 2, 3, 0));

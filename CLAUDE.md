@@ -28,9 +28,11 @@ exit 0 = pass / 1 = fail). Use `/smoke` to run the whole battery.
   dummy and then `Directory.Delete()`s the folder recursively (`SelfTest.RunUpdateCheck`).
   The no-arg form self-tests safely in `%TEMP%`. A PreToolUse hook enforces this — do
   not work around it.
-- The auto-update feed is `D:\ClaudeCode\VoiceToText-Releases` (outside the repo).
-  Verify it with `/release`'s verify step or the `release-verifier` agent — never
-  with `--updatecheck`.
+- There are TWO auto-update feeds: **GitHub Releases is canonical** (users' apps poll
+  `https://github.com/lukeeexd/voice-to-text/releases/latest/download`); the local
+  `D:\ClaudeCode\VoiceToText-Releases` folder (outside the repo) is the dev feed.
+  `/release` ships to both. Verify with `/release`'s verify step or the
+  `release-verifier` agent — never with `--updatecheck`.
 - `iscc` must run **after** `publish.ps1` — the .iss reads its version from
   `publish\VoiceToText.exe`; a stale publish ships an old build.
 - `AppMutex` in `installer/VoiceToText.iss` must stay identical to the mutex name in

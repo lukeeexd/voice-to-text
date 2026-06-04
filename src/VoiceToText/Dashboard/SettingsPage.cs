@@ -120,7 +120,7 @@ internal sealed class SettingsPage : UserControl
         browseButton.Location = new Point(folderField.Width + 8, 0);
         folder.Controls.Add(folderField);
         folder.Controls.Add(browseButton);
-        var updateWarning = new Label { Text = "⚠ Runs an installer from this folder — only enable for a folder you trust.", ForeColor = Theme.Warning, Font = Theme.Caption };
+        var updateWarning = new Label { Text = "⚠ Runs an installer from this source — only use a folder or URL you trust.", ForeColor = Theme.Warning, Font = Theme.Caption };
 
         // --- Cards ---
         var dictation = new SectionCard("Dictation") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
@@ -142,7 +142,7 @@ internal sealed class SettingsPage : UserControl
 
         var updates = new SectionCard("Updates") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
         updates.AddRow("Check for updates on startup", _autoUpdateCheck);
-        updates.AddRow("Update folder", folder, updateWarning);
+        updates.AddRow("Update source", folder, updateWarning);
 
         // --- Scroll area (cards) + pinned Save bar ---
         var cards = new FlowLayoutPanel

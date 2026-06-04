@@ -34,8 +34,11 @@ public sealed class AppSettings
     public int? OverlayX { get; set; }
     public int? OverlayY { get; set; }
 
-    /// <summary>Folder (local or UNC) holding latest.json + the setup exe. Empty = no feed.</summary>
-    public string UpdateFeedFolder { get; set; } = "";
+    /// <summary>
+    /// Update source holding latest.json + the setup exe: a folder (local or UNC) or an https
+    /// feed URL (e.g. a GitHub Releases latest/download prefix). Empty = no feed.
+    /// </summary>
+    public string UpdateFeedFolder { get; set; } = "https://github.com/lukeeexd/voice-to-text/releases/latest/download";
 
     /// <summary>Check for updates on startup and via the tray menu. Off by default (runs an installer).</summary>
     public bool AutoUpdateEnabled { get; set; } = false;

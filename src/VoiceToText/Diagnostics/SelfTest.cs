@@ -361,6 +361,19 @@ internal static class SelfTest
             Pass("ui rows constructed", list.Controls.Count == 2, $"={list.Controls.Count}");
             var meta = list.Controls[0].Controls.OfType<Label>().First(l => l is not LinkLabel && l.Top == 8);
             Pass("ui meta shows model + seconds", meta.Text.Contains("Large v3 Turbo") && meta.Text.Contains("0.3s"), meta.Text);
+
+            // Freeze guard: Reload with UNCHANGED data must NOT dispose+rebuild the rows (the v0.8.11
+            // flicker/thrash fix). Same row instance after a second Reload => the guard skipped the rebuild.
+            var firstRow = list.Controls[0];
+            page.Reload();
+            Pass("reload idempotent when unchanged (no rebuild => no flicker)",
+                list.Controls.Count == 2 && ReferenceEquals(list.Controls[0], firstRow),
+                $"same-instance={ReferenceEquals(list.Controls[0], firstRow)}");
+
+            // And it DOES rebuild when the data changes (a new dictation appears on return).
+            uiHistory.Data.Entries.Insert(0, new HistoryEntry { Time = DateTime.Now.AddSeconds(1), App = "Test", Text = "new one", Words = 2 });
+            page.Reload();
+            Pass("reload rebuilds when entries change", list.Controls.Count == 3, $"={list.Controls.Count}");
         }
         catch (Exception ex)
         {

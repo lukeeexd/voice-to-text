@@ -79,9 +79,20 @@ internal sealed class HistoryPage : UserControl
         DoLayout();
     }
 
-    /// <summary>Rebuild the list from the current settings + stored entries.</summary>
+    private string _renderedKey = ""; // signature of the currently-rendered list; guards Reload against thrash
+
+    /// <summary>Rebuild the list from the current settings + stored entries — but only when they
+    /// actually changed. OnActivated calls Reload on every window activation; if anything re-activates
+    /// the window rapidly (e.g. an external clipboard monitor reacting to a Copy), an unconditional
+    /// dispose+rebuild makes the list flicker/thrash and the scroll jump to the top. The signature
+    /// guard makes repeat calls with unchanged data a cheap no-op.</summary>
     public void Reload()
     {
+        var key = CurrentKey();
+        if (key == _renderedKey) { DoLayout(); return; }
+        _renderedKey = key;
+        Log.Info($"History: rebuilding list ({key}).");
+
         DoLayout();
 
         _list.SuspendLayout();
@@ -109,6 +120,15 @@ internal sealed class HistoryPage : UserControl
             ? "No dictations recorded yet."
             : "History is off — enable it in Settings to keep your recent dictations.";
         _clear.Enabled = any;
+    }
+
+    // A cheap signature of what the list should show: off / empty / count + newest-entry stamp.
+    // Dictations only ever prepend, so count + the newest Time uniquely identify the current view.
+    private string CurrentKey()
+    {
+        if (!_settings.HistoryEnabled) return "off";
+        var entries = _history.Entries;
+        return entries.Count == 0 ? "empty" : $"{entries.Count}|{entries[0].Time.Ticks}";
     }
 
     private void OnClear(object? sender, EventArgs e)
@@ -166,9 +186,11 @@ internal sealed class HistoryPage : UserControl
 
         var copy = new LinkLabel
         {
-            AutoSize = true,
-            Text = "Copy",
-            Font = Theme.Caption,
+            AutoSize = false,
+            Size = new Size(88, 18),
+            TextAlign = ContentAlignment.MiddleRight, // fixed width + right-aligned so the
+            Text = "Copy",                            // "Copied ✓" / "Copy failed" feedback never
+            Font = Theme.Caption,                     // changes layout (no relayout, no scroll jump)
             LinkColor = Theme.Accent,
             ActiveLinkColor = Theme.AccentLight,
         };
@@ -204,7 +226,7 @@ internal sealed class HistoryPage : UserControl
         foreach (Control c in card.Controls)
             if (c is LinkLabel link)
             {
-                link.Location = new Point(card.Width - link.PreferredWidth - 14, 8);
+                link.Location = new Point(card.Width - link.Width - 14, 8); // link is fixed-width now
                 copyLeft = link.Left;
             }
 
@@ -238,15 +260,11 @@ internal sealed class HistoryPage : UserControl
         }
     }
 
+    // Fixed-width, right-aligned link => changing only the text/colour gives feedback without any
+    // layout change (no relayout, no AutoScroll jump-to-top).
     private static void SetCopyState(LinkLabel link, string text, Color color)
     {
         link.Text = text;
         link.LinkColor = color;
-        if (link.Parent is { } card)
-        {
-            link.Left = card.Width - link.PreferredWidth - 14; // keep right-aligned
-            if (card.Tag is ValueTuple<Label, Label> tag) // re-fit the meta so the wider link can't overlap it
-                tag.Item2.Width = Math.Max(40, link.Left - tag.Item2.Left - 8);
-        }
     }
 }

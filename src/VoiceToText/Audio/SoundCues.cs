@@ -86,6 +86,7 @@ internal sealed class SoundCues : IDisposable
             lock (_lock)
             {
                 if (_disposed) return;
+                if (_active.Count >= 4) return; // bound concurrent players if the hotkey is spammed (cues are ~120 ms)
                 var stream = new RawSourceWaveStream(new MemoryStream(pcm), Format);
                 player = new WaveOutEvent();
                 player.Init(stream);

@@ -28,6 +28,7 @@ internal sealed class SettingsPage : UserControl
     private readonly ToggleSwitch _autoStopCheck = new();
     private readonly DarkNumericUpDown _silenceUpDown = new() { DecimalPlaces = 1, Minimum = 0.3M, Maximum = 10.0M, Increment = 0.1M };
     private readonly ToggleSwitch _overlayCheck = new();
+    private readonly ToggleSwitch _soundCheck = new();
     private readonly ToggleSwitch _historyCheck = new();
     private readonly DarkNumericUpDown _wpmUpDown = new() { DecimalPlaces = 0, Minimum = 10, Maximum = 300, Increment = 5 };
     private readonly ToggleSwitch _autoUpdateCheck = new();
@@ -83,6 +84,7 @@ internal sealed class SettingsPage : UserControl
         _autoStopCheck.Checked = _settings.AutoStopEnabled;
         _silenceUpDown.Value = (decimal)Math.Clamp(_settings.AutoStopSilenceSeconds, 0.3, 10.0);
         _overlayCheck.Checked = _settings.ShowOverlay;
+        _soundCheck.Checked = _settings.SoundCuesEnabled;
         _historyCheck.Checked = _settings.HistoryEnabled;
         _wpmUpDown.Value = (decimal)Math.Clamp(_settings.TypingSpeedWpm, 10, 300);
         _autoUpdateCheck.Checked = _settings.AutoUpdateEnabled;
@@ -134,6 +136,7 @@ internal sealed class SettingsPage : UserControl
 
         var feedback = new SectionCard("Feedback & privacy") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
         feedback.AddRow("Show on-screen indicator while dictating", _overlayCheck);
+        feedback.AddRow("Play a sound when dictation starts and stops", _soundCheck);
         feedback.AddRow("Save recent dictation history", _historyCheck, new Label { Text = "Kept only on this PC.", ForeColor = Theme.TextSecondary, Font = Theme.Caption });
 
         var general = new SectionCard("General") { Width = CardWidth, Margin = new Padding(0, 0, 0, 14) };
@@ -200,6 +203,7 @@ internal sealed class SettingsPage : UserControl
         _autoStopCheck.CheckedChanged += (_, _) => UpdateDirty();
         _silenceUpDown.ValueChanged += (_, _) => UpdateDirty();
         _overlayCheck.CheckedChanged += (_, _) => UpdateDirty();
+        _soundCheck.CheckedChanged += (_, _) => UpdateDirty();
         _historyCheck.CheckedChanged += (_, _) => UpdateDirty();
         _wpmUpDown.ValueChanged += (_, _) => UpdateDirty();
         _autoUpdateCheck.CheckedChanged += (_, _) => UpdateDirty();
@@ -316,6 +320,7 @@ internal sealed class SettingsPage : UserControl
         _autoStopCheck.Checked,
         _silenceUpDown.Value,
         _overlayCheck.Checked,
+        _soundCheck.Checked,
         _historyCheck.Checked,
         _wpmUpDown.Value,
         _autoUpdateCheck.Checked,
@@ -347,6 +352,7 @@ internal sealed class SettingsPage : UserControl
         _settings.AutoStopEnabled = _autoStopCheck.Checked;
         _settings.AutoStopSilenceSeconds = (double)_silenceUpDown.Value;
         _settings.ShowOverlay = _overlayCheck.Checked;
+        _settings.SoundCuesEnabled = _soundCheck.Checked;
         _settings.HistoryEnabled = _historyCheck.Checked;
         _settings.TypingSpeedWpm = (double)_wpmUpDown.Value;
         _settings.AutoUpdateEnabled = _autoUpdateCheck.Checked;

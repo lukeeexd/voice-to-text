@@ -139,6 +139,15 @@ internal static class SelfTest
         var firstCenter = meter.Update(0.25f)[7];
         Pass("smoothing: first frame not maxed", firstCenter < 0.6f, $"first={firstCenter:F2}");
 
+        // Sound cues: pure PCM generation only (never open an output device here — no audio on CI).
+        var startCue = SoundCues.RenderCue(new[] { 660.0, 880.0 });
+        var stopCue = SoundCues.RenderCue(new[] { 880.0, 660.0 });
+        Pass("sound cue: start buffer non-empty", startCue.Length > 0, $"bytes={startCue.Length}");
+        Pass("sound cue: stop buffer non-empty", stopCue.Length > 0, $"bytes={stopCue.Length}");
+        Pass("sound cue: 16-bit PCM (even byte count)", startCue.Length % 2 == 0 && stopCue.Length % 2 == 0);
+        Pass("sound cue: start and stop are a distinct pair",
+            startCue.Length == stopCue.Length && !startCue.SequenceEqual(stopCue));
+
         log.AppendLine(allPass ? "ALL WIDGET TESTS PASSED" : "SOME WIDGET TESTS FAILED");
         var result = log.ToString();
         File.WriteAllText(outputPath, result);

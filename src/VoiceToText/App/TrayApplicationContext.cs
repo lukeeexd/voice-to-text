@@ -29,6 +29,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly HotkeyManager _hotkeys;
     private readonly IconCache _icons = new();
     private readonly IAudioSource _audio = new WasapiAudioSource();
+    private readonly SoundCues _cues = new();
     private readonly ITextInjector _injector = new ClipboardTextInjector();
     private readonly AppSettings _settings;
 
@@ -280,6 +281,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             var autoStop = !_settings.HoldToTalk && _settings.AutoStopEnabled;
             _audio.Start(_settings.InputDeviceId, autoStop, _settings.AutoStopSilenceSeconds);
             SetState(AppState.Recording);
+            if (_settings.SoundCuesEnabled) _cues.PlayStart();
         }
         catch (Exception ex)
         {
@@ -291,6 +293,9 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
     private async Task StopAndTranscribeAsync()
     {
+        // Play the stop cue immediately on release/stop, before capture ends, so it never bleeds
+        // into the captured audio (covers hold-release + toggle-stop — both call this).
+        if (_settings.SoundCuesEnabled) _cues.PlayStop();
         _busy = true;
         SetState(AppState.Transcribing);
         try
@@ -638,6 +643,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _hotkeys.Dispose();
             _trayIcon.Dispose();
             _icons.Dispose();
+            _cues.Dispose();
             _stt.Dispose();
             _overlay?.Dispose();
             _dashboard?.Dispose();

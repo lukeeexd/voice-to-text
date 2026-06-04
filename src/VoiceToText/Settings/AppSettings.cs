@@ -63,6 +63,9 @@ public sealed class AppSettings
     /// <summary>Keep a local, opt-in log of recent dictations (history.json). Off by default.</summary>
     public bool HistoryEnabled { get; set; } = false;
 
+    /// <summary>Play a short sound when dictation starts and stops. On by default.</summary>
+    public bool SoundCuesEnabled { get; set; } = true;
+
     /// <summary>Whether the first-run welcome has been shown. Set once on first launch.</summary>
     public bool OnboardingCompleted { get; set; } = false;
 

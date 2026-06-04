@@ -114,10 +114,13 @@ internal sealed class HistoryPage : UserControl
     private void OnClear(object? sender, EventArgs e)
     {
         if (_history.Entries.Count == 0) return;
-        DialogResult Ask() => MessageBox.Show(this, "Erase all recorded dictation history?", "Voice to Text",
-            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-        // Route through the form's modal guard so a tray re-activation can't hide this dialog (freeze).
-        var choice = FindForm() is DashboardForm form ? form.ShowOwnedDialog(Ask) : Ask();
+        const string msg = "Erase all recorded dictation history?";
+        const string title = "Voice to Text";
+        // Route through the form's modal guard so a tray re-activation can't hide this dialog (freeze);
+        // if somehow unparented, fall back to an OWNERLESS box (which also can't be covered).
+        var choice = FindForm() is DashboardForm form
+            ? form.ShowOwnedDialog(() => MessageBox.Show(this, msg, title, MessageBoxButtons.YesNo, MessageBoxIcon.Warning))
+            : MessageBox.Show(msg, title, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
         if (choice != DialogResult.Yes) return;
         _history.Clear();
         Reload();
@@ -239,6 +242,11 @@ internal sealed class HistoryPage : UserControl
     {
         link.Text = text;
         link.LinkColor = color;
-        if (link.Parent is { } card) link.Left = card.Width - link.PreferredWidth - 14; // keep right-aligned
+        if (link.Parent is { } card)
+        {
+            link.Left = card.Width - link.PreferredWidth - 14; // keep right-aligned
+            if (card.Tag is ValueTuple<Label, Label> tag) // re-fit the meta so the wider link can't overlap it
+                tag.Item2.Width = Math.Max(40, link.Left - tag.Item2.Left - 8);
+        }
     }
 }

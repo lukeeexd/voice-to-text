@@ -259,7 +259,11 @@ internal sealed class SettingsPage : UserControl
         using var dialog = new FolderBrowserDialog { Description = "Choose the update folder", UseDescriptionForTitle = true };
         if (!string.IsNullOrWhiteSpace(_updateFolderBox.Text) && Directory.Exists(_updateFolderBox.Text))
             dialog.SelectedPath = _updateFolderBox.Text;
-        if (dialog.ShowDialog(this) == DialogResult.OK)
+        // Route through the form's modal guard (same freeze class as the confirm prompts) so a tray
+        // re-activation can't pull the disabled owner in front of this owned dialog.
+        DialogResult Show() => dialog.ShowDialog(this);
+        var result = FindForm() is DashboardForm form ? form.ShowOwnedDialog(Show) : Show();
+        if (result == DialogResult.OK)
             _updateFolderBox.Text = dialog.SelectedPath;
     }
 

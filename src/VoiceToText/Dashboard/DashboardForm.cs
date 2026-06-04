@@ -117,8 +117,9 @@ internal sealed class DashboardForm : Form
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool IsModalOpen { get; private set; }
 
-    /// <summary>Show an owned modal dialog with the window surfaced first, tracking it so the tray
-    /// can't cover it. Always use this for MessageBox.Show(this, ...) on the dashboard.</summary>
+    /// <summary>Show an owned modal dialog (a MessageBox or a common dialog) with the window surfaced
+    /// first, tracking it so the tray re-activation can't cover it. Use this for ANY owned modal —
+    /// MessageBox.Show(this, …) or dialog.ShowDialog(this) — hosted on the dashboard.</summary>
     public DialogResult ShowOwnedDialog(Func<DialogResult> show)
     {
         IsModalOpen = true;

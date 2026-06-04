@@ -1,5 +1,6 @@
 using System.Drawing;
 using VoiceToText.Dashboard.Controls;
+using VoiceToText.Diagnostics;
 using VoiceToText.History;
 using VoiceToText.Settings;
 using VoiceToText.Stt;
@@ -113,9 +114,11 @@ internal sealed class HistoryPage : UserControl
     private void OnClear(object? sender, EventArgs e)
     {
         if (_history.Entries.Count == 0) return;
-        if (MessageBox.Show(this, "Erase all recorded dictation history?", "Voice to Text",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
-            return;
+        DialogResult Ask() => MessageBox.Show(this, "Erase all recorded dictation history?", "Voice to Text",
+            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+        // Route through the form's modal guard so a tray re-activation can't hide this dialog (freeze).
+        var choice = FindForm() is DashboardForm form ? form.ShowOwnedDialog(Ask) : Ask();
+        if (choice != DialogResult.Yes) return;
         _history.Clear();
         Reload();
     }
@@ -166,7 +169,7 @@ internal sealed class HistoryPage : UserControl
             LinkColor = Theme.Accent,
             ActiveLinkColor = Theme.AccentLight,
         };
-        copy.LinkClicked += (_, _) => CopyText(entry.Text);
+        copy.LinkClicked += (_, _) => CopyText(copy, entry.Text);
 
         var body = new Label
         {
@@ -213,9 +216,29 @@ internal sealed class HistoryPage : UserControl
         return t.ToString("MMM d, HH:mm");
     }
 
-    private static void CopyText(string text)
+    // Copy a row's text with visible feedback. Clipboard.SetText already retries internally; on
+    // failure (the OS or our own paste-injector holding the clipboard) we log it and flip the link
+    // to "Copy failed" instead of silently doing nothing. The link resets to "Copy" on the next
+    // Reload (revisiting the tab). No timer => no disposed-control hazard.
+    private static void CopyText(LinkLabel link, string text)
     {
-        try { if (!string.IsNullOrEmpty(text)) Clipboard.SetText(text); }
-        catch { /* clipboard contention — best effort */ }
+        if (string.IsNullOrEmpty(text)) return;
+        try
+        {
+            Clipboard.SetText(text);
+            SetCopyState(link, "Copied ✓", Theme.Accent);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("History: copy to clipboard failed", ex);
+            SetCopyState(link, "Copy failed", Theme.Warning);
+        }
+    }
+
+    private static void SetCopyState(LinkLabel link, string text, Color color)
+    {
+        link.Text = text;
+        link.LinkColor = color;
+        if (link.Parent is { } card) link.Left = card.Width - link.PreferredWidth - 14; // keep right-aligned
     }
 }

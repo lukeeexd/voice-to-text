@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Drawing;
 using VoiceToText.History;
 using VoiceToText.Settings;
@@ -111,6 +112,27 @@ internal sealed class DashboardForm : Form
         SetActiveStyles();
     }
 
+    /// <summary>True while an owned modal dialog is showing, so the tray re-activation path won't
+    /// BringToFront the (disabled) owner over its own modal — which would hide it and wedge the app.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool IsModalOpen { get; private set; }
+
+    /// <summary>Show an owned modal dialog with the window surfaced first, tracking it so the tray
+    /// can't cover it. Always use this for MessageBox.Show(this, ...) on the dashboard.</summary>
+    public DialogResult ShowOwnedDialog(Func<DialogResult> show)
+    {
+        IsModalOpen = true;
+        try
+        {
+            if (!Visible) Show();
+            if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+            Activate();
+            BringToFront();
+            return show();
+        }
+        finally { IsModalOpen = false; }
+    }
+
     public void ShowPage(DashboardPageKind page)
     {
         // Leaving a dirty Settings page? Offer to save first (covers nav clicks + programmatic navigation).
@@ -130,10 +152,10 @@ internal sealed class DashboardForm : Form
     // Returns true to proceed (Save or Discard chosen), false to abort (Cancel).
     private bool PromptSaveSettings()
     {
-        var choice = MessageBox.Show(this,
+        var choice = ShowOwnedDialog(() => MessageBox.Show(this,
             "You have unsaved settings changes. Save them?",
             "Voice to Text",
-            MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question));
         switch (choice)
         {
             case DialogResult.Yes: _settingsPage.Save(); return true;

@@ -395,6 +395,15 @@ internal sealed class TrayApplicationContext : ApplicationContext
             _dashboard.FormClosed += (_, _) => _dashboard = null;
         }
 
+        // If an owned modal (an unsaved-settings or clear-history confirm) is open, the form is
+        // disabled — surface that modal instead of pulling the disabled owner in front of it, which
+        // would hide the dialog and wedge the window (every click just flickers). v0.8.10 freeze fix.
+        if (_dashboard.IsModalOpen)
+        {
+            _dashboard.Activate();
+            return;
+        }
+
         _dashboard.ShowPage(page);
         if (!_dashboard.Visible) _dashboard.Show();
         if (_dashboard.WindowState == FormWindowState.Minimized) _dashboard.WindowState = FormWindowState.Normal;

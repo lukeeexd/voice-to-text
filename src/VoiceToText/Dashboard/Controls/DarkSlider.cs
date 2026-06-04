@@ -73,6 +73,7 @@ internal sealed class DarkSlider : Control
 
     protected override void OnMouseUp(MouseEventArgs e)
     {
+        if (e.Button != MouseButtons.Left) return; // ignore non-left releases (no stray preview cue)
         if (_dragging)
         {
             _dragging = false;

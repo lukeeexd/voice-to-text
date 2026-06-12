@@ -16,9 +16,9 @@ Standing instruction: after ANY version bump, ship — do not wait to be asked.
 
 ## Steps (order matters)
 
-1. **Bump version** — edit `<Version>` in `src/VoiceToText/VoiceToText.csproj`
-   (plain SemVer, no `+suffix`; `InformationalVersion` must stay parseable by the
-   updater). Skip if already bumped for this release.
+1. **Bump version** — edit `<Version>` in `src/Version.props` (shared by the
+   Windows and Linux heads; plain SemVer, no `+suffix`; `InformationalVersion`
+   must stay parseable by the updater). Skip if already bumped for this release.
 2. **Publish** — run `.\publish.ps1` from the repo root. It wipes and rebuilds
    `publish\` (self-contained win-x64 single file + `runtimes\`).
 3. **Installer** — run `iscc installer\VoiceToText.iss` ONLY AFTER step 2 (the .iss

@@ -1,0 +1,14 @@
+<Project>
+
+  <!--
+    The single source of the app version, shared by every head (Windows exe,
+    Linux AppImage). Bump it here ONLY; latest.json's versions are hand-written
+    by /release and must match.
+  -->
+  <PropertyGroup>
+    <Version>0.8.14</Version>
+    <!-- Keep InformationalVersion exactly the SemVer (no +git-sha) so the updater can parse it. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+</Project>

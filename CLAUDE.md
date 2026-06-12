@@ -1,7 +1,11 @@
 # VoiceToText — project notes for Claude Code
 
-Windows 11 dictation tray app. C#/.NET 10 WinForms, Whisper.net (Vulkan), NAudio.
-Single project: `src/VoiceToText/VoiceToText.csproj` (solution: `VoiceToText.slnx`).
+Dictation tray app. C#/.NET 10, Whisper.net (Vulkan), shared engine in
+`src/VoiceToText.Core`; two heads: `src/VoiceToText` (Windows 11, WinForms +
+NAudio) and `src/VoiceToText.Linux` (Avalonia 11.3 + libpulse/X11/portals;
+ships as an AppImage). Solution: `VoiceToText.slnx`.
+Linux releases are GATED until the phase-4 VM validation pass
+(see docs/superpowers/specs/2026-06-12-linux-port-design.md).
 
 ## Build & run
 
@@ -17,7 +21,13 @@ Run the built exe with these flags (each writes `<name>-output.txt` to the CWD,
 exit 0 = pass / 1 = fail). Use `/smoke` to run the whole battery.
 
 - Headless: `--vadtest` `--statstest` `--dashtest` `--historytest` `--textrulestest`
-  `--logtest` `--abouttest` `--widgettest` `--updatecheck` (**no argument — ever**)
+  `--logtest` `--abouttest` `--widgettest` `--controllertest` `--updatecheck`
+  (**no argument — ever**)
+- Linux head (`voicetotext` exe, also runs on Windows for the portable flags):
+  the same battery minus the WinForms tests, plus `--audiotest` (needs PulseAudio;
+  skips cleanly without) and `--uitest` (Avalonia.Headless). CI
+  (`.github/workflows/linux.yml`) runs it all on ubuntu including a real-pulse
+  capture roundtrip and a CPU tiny-model STT end-to-end.
 - GUI smoke (desktop session, no mic/GPU): `--dashwindow` — constructs and paints all
   Dashboard pages + onboarding; catches ctor/paint crashes that code review misses.
 - Full STT (GPU, downloads the model): `--selftest <16k-mono.wav> <out.txt>`
@@ -37,8 +47,9 @@ exit 0 = pass / 1 = fail). Use `/smoke` to run the whole battery.
   `publish\VoiceToText.exe`; a stale publish ships an old build.
 - `AppMutex` in `installer/VoiceToText.iss` must stay identical to the mutex name in
   `Program.cs`, or the updater can't close the running app.
-- `<Version>` in the csproj is the only version you edit; `latest.json`'s `Version` is
-  hand-written — keep them in sync (equal/lower versions silently never prompt).
+- `<Version>` in `src/Version.props` is the only version you edit (shared by both
+  heads); `latest.json`'s versions are hand-written — keep them in sync
+  (equal/lower versions silently never prompt).
 
 ## WinForms/GDI+ gotchas (this repo's recurring bug class)
 

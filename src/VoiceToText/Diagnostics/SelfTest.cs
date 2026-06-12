@@ -140,8 +140,8 @@ internal static class SelfTest
         Pass("smoothing: first frame not maxed", firstCenter < 0.6f, $"first={firstCenter:F2}");
 
         // Sound cues: pure PCM generation only (never open an output device here — no audio on CI).
-        var startCue = SoundCues.RenderCue(new[] { 660.0, 880.0 });
-        var stopCue = SoundCues.RenderCue(new[] { 880.0, 660.0 });
+        var startCue = CueSynth.RenderCue(CueSynth.StartFreqs);
+        var stopCue = CueSynth.RenderCue(CueSynth.StopFreqs);
         Pass("sound cue: start buffer non-empty", startCue.Length > 0, $"bytes={startCue.Length}");
         Pass("sound cue: stop buffer non-empty", stopCue.Length > 0, $"bytes={stopCue.Length}");
         Pass("sound cue: 16-bit PCM (even byte count)", startCue.Length % 2 == 0 && stopCue.Length % 2 == 0);

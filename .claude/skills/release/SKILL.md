@@ -64,12 +64,9 @@ Standing instruction: after ANY version bump, ship — do not wait to be asked.
    - Optionally launch the `release-verifier` agent for an independent check.
 9. **Commit** — `vX.Y.Z: <summary>` per repo convention, and `git push`.
 
-## Linux (AppImage) — ⛔ GATED until phase-4 VM validation passes
+## Linux (AppImage) — shipped since v0.9.0 (phase-4 gate passed 2026-06-12)
 
-Do NOT add the Linux fields to `latest.json` before the phase-4 gate clears
-(see `docs/superpowers/specs/2026-06-12-linux-port-design.md`); publishing them
-turns on the Linux self-updater for anyone running the AppImage. Once cleared,
-between steps 7 and 8:
+Between steps 7 and 8, ALWAYS:
 
 L1. Tagging the release (step 7) triggers `.github/workflows/release.yml`,
     which builds `VoiceToText-x86_64.AppImage`, smoke-tests inside it, and

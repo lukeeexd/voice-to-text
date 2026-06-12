@@ -4,8 +4,8 @@ Dictation tray app. C#/.NET 10, Whisper.net (Vulkan), shared engine in
 `src/VoiceToText.Core`; two heads: `src/VoiceToText` (Windows 11, WinForms +
 NAudio) and `src/VoiceToText.Linux` (Avalonia 11.3 + libpulse/X11/portals;
 ships as an AppImage). Solution: `VoiceToText.slnx`.
-Linux releases are GATED until the phase-4 VM validation pass
-(see docs/superpowers/specs/2026-06-12-linux-port-design.md).
+Linux ships as a beta since v0.9.0 (phase-4 VM validation passed 2026-06-12);
+/release publishes BOTH platforms — see the skill's "Linux (AppImage)" steps.
 
 ## Build & run
 

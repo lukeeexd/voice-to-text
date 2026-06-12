@@ -11,9 +11,7 @@ public sealed class HistoryService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    private static string HistoryPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "VoiceToText", "history.json");
+    private static string HistoryPath => Path.Combine(AppPaths.DataDir, "history.json");
 
     public HistoryStore Data { get; private set; } = new();
 

@@ -89,9 +89,7 @@ public sealed class AppSettings
         Converters = { new JsonStringEnumConverter() },
     };
 
-    private static string SettingsPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "VoiceToText", "settings.json");
+    private static string SettingsPath => Path.Combine(AppPaths.ConfigDir, "settings.json");
 
     public static AppSettings Load()
     {

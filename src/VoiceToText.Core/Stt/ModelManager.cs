@@ -12,9 +12,7 @@ public static class ModelManager
     {
         get
         {
-            var dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "VoiceToText", "models");
+            var dir = Path.Combine(AppPaths.DataDir, "models");
             Directory.CreateDirectory(dir);
             return dir;
         }

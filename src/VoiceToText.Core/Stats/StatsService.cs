@@ -11,9 +11,7 @@ public sealed class StatsService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    private static string StatsPath => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "VoiceToText", "stats.json");
+    private static string StatsPath => Path.Combine(AppPaths.DataDir, "stats.json");
 
     public StatsData Data { get; private set; } = new();
 

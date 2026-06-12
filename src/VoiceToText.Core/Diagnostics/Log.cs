@@ -48,9 +48,7 @@ public sealed class LogWriter
 /// <summary>Static facade over a default <see cref="LogWriter"/> at %APPDATA%\VoiceToText\logs.</summary>
 public static class Log
 {
-    public static string LogFolder { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "VoiceToText", "logs");
+    public static string LogFolder { get; } = Path.Combine(AppPaths.DataDir, "logs");
 
     private static readonly LogWriter Writer = new(Path.Combine(LogFolder, "voicetotext.log"));
 

@@ -12,6 +12,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Avalonia pinned to 11.3.x deliberately (12.x is a newer major; revisit after VM validation). -->
+    <PackageReference Include="Avalonia" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
+    <PackageReference Include="Avalonia.Headless" Version="11.3.2" />
+    <PackageReference Include="Tmds.DBus" Version="0.94.1" />
     <ProjectReference Include="..\VoiceToText.Core\VoiceToText.Core.csproj" />
   </ItemGroup>
 

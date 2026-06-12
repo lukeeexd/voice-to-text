@@ -72,6 +72,14 @@ public sealed class AppSettings
     /// <summary>Whether the first-run welcome has been shown. Set once on first launch.</summary>
     public bool OnboardingCompleted { get; set; } = false;
 
+    /// <summary>Linux/Wayland only: the RemoteDesktop portal's restore token, so the
+    /// paste-injection permission persists across restarts. Unused on Windows.</summary>
+    public string? PortalRestoreToken { get; set; }
+
+    /// <summary>Skip GPU (Vulkan) inference and force the CPU Whisper runtime.
+    /// Guards against broken GPU drivers; surfaced in the Linux head's settings.</summary>
+    public bool ForceCpu { get; set; } = false;
+
     [JsonIgnore]
     public HotkeyDefinition Hotkey
     {

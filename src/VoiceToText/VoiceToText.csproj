@@ -27,7 +27,7 @@
   -->
   <Target Name="StripForeignNativeRuntimes" AfterTargets="Publish">
     <ItemGroup>
-      <_ForeignRid Include="linux-x64;linux-arm64;linux-arm;osx;osx-x64;osx-arm64;win-x86;win-arm64;win-arm" />
+      <_ForeignRid Include="linux-x64;linux-arm64;linux-arm;osx;osx-x64;osx-arm64;macos;macos-x64;macos-arm64;win-x86;win-arm64;win-arm" />
       <_ForeignRuntimeDir Include="@(_ForeignRid->'$(PublishDir)runtimes\%(Identity)')" />
       <_ForeignRuntimeDir Include="@(_ForeignRid->'$(PublishDir)runtimes\vulkan\%(Identity)')" />
     </ItemGroup>

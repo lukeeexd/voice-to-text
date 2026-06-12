@@ -33,7 +33,7 @@ public sealed class SilenceDetector
 
     /// <summary>
     /// Feed one audio chunk's RMS level and its duration in seconds. Returns true
-    /// exactly once â€” when trailing silence after speech reaches the configured
+    /// exactly once — when trailing silence after speech reaches the configured
     /// duration. Returns false on every other call.
     /// </summary>
     public bool Process(double rms, double chunkSeconds)

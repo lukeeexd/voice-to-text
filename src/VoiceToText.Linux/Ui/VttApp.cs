@@ -21,7 +21,7 @@ public sealed class VttApp : Application
     public static Avalonia.Input.Platform.IClipboard? SharedClipboard { get; private set; }
 
     private TrayIcon? _tray;
-    private SettingsWindow? _settingsWindow;
+    private Dashboard.DashboardWindow? _dashboardWindow;
     private Window? _hiddenWindow;
 
     public override void Initialize()
@@ -39,7 +39,7 @@ public sealed class VttApp : Application
         services.Controller.StatusChanged += (state, message) =>
             Dispatcher.UIThread.Post(() => OnStatus(state, message));
         services.OpenSettingsRequested += () =>
-            Dispatcher.UIThread.Post(ShowSettings);
+            Dispatcher.UIThread.Post(ShowDashboard);
 
         // A never-activated 1x1 transparent window whose only job is providing the
         // platform clipboard service (tray apps have no main window to borrow it from).
@@ -76,8 +76,8 @@ public sealed class VttApp : Application
         var menu = new NativeMenu();
         var toggle = new NativeMenuItem("Toggle dictation");
         toggle.Click += (_, _) => _ = services.Controller.ToggleAsync();
-        var settings = new NativeMenuItem("Settings…");
-        settings.Click += (_, _) => ShowSettings();
+        var settings = new NativeMenuItem("Dashboard…");
+        settings.Click += (_, _) => ShowDashboard();
         var quit = new NativeMenuItem("Quit");
         quit.Click += (_, _) =>
         {
@@ -113,16 +113,16 @@ public sealed class VttApp : Application
         }
     }
 
-    private void ShowSettings()
+    private void ShowDashboard()
     {
-        if (_settingsWindow is null || !_settingsWindow.IsVisible)
+        if (_dashboardWindow is null || !_dashboardWindow.IsVisible)
         {
-            _settingsWindow = new SettingsWindow(Services!);
-            _settingsWindow.Show();
+            _dashboardWindow = new Dashboard.DashboardWindow(Services!);
+            _dashboardWindow.Show();
         }
         else
         {
-            _settingsWindow.Activate();
+            _dashboardWindow.Activate();
         }
     }
 }

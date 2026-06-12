@@ -24,15 +24,22 @@ internal static class UiSelfTest
             session.Dispatch(() =>
             {
                 var services = new AppServices();
-                var settingsWindow = new SettingsWindow(services);
-                settingsWindow.Show();
-                settingsWindow.Close();
+                var dashboard = new Dashboard.DashboardWindow(services);
+                dashboard.Show();
+                foreach (var page in new[]
+                {
+                    Dashboard.LinuxPageKind.Dashboard, Dashboard.LinuxPageKind.Settings,
+                    Dashboard.LinuxPageKind.TextRules, Dashboard.LinuxPageKind.History,
+                    Dashboard.LinuxPageKind.About,
+                })
+                    dashboard.ShowPage(page);
+                dashboard.Close();
                 var firstRun = new FirstRunWindow(services);
                 firstRun.Show();
                 firstRun.Close();
             }, CancellationToken.None).GetAwaiter().GetResult();
 
-            File.WriteAllText(outputPath, "LINUX UI OK (settings + first-run constructed, shown, closed)");
+            File.WriteAllText(outputPath, "LINUX UI OK (dashboard with 5 pages + first-run constructed, shown, closed)");
             Console.WriteLine("LINUX UI OK");
             return 0;
         }

@@ -2,31 +2,25 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
+using Avalonia.Media;
 using VoiceToText.Linux.Platform;
 using VoiceToText.Stt;
 
-namespace VoiceToText.Linux.Ui;
+namespace VoiceToText.Linux.Ui.Dashboard;
 
 /// <summary>
-/// The lean Linux settings window, built entirely in code. Every change saves
-/// immediately; engine-affecting changes (model, language, Force CPU) apply on the
-/// next daemon start and say so inline.
+/// The Settings page: the former lean SettingsWindow's contents as a dashboard page,
+/// styled with ThemeTokens. Every change saves immediately; engine-affecting changes
+/// (model, language, GPU) apply on the next daemon start and say so inline.
 /// </summary>
-public sealed class SettingsWindow : Window
+internal sealed class LinuxSettingsPage : UserControl
 {
-    private readonly AppServices _services;
-
-    public SettingsWindow(AppServices services)
+    public LinuxSettingsPage(AppServices services)
     {
-        _services = services;
         var settings = services.Settings;
+        Background = ThemeTokens.WindowBgBrush;
 
-        Title = "VoiceToText settings";
-        Width = 460;
-        SizeToContent = SizeToContent.Height;
-        CanResize = false;
-
-        var panel = new StackPanel { Margin = new Thickness(20), Spacing = 12 };
+        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 12 };
 
         // --- Speech model ---
         panel.Children.Add(Header("Speech model"));
@@ -61,7 +55,7 @@ public sealed class SettingsWindow : Window
         };
         panel.Children.Add(language);
 
-        // --- Auto-stop ---
+        // --- Recording ---
         var autoStop = new CheckBox { Content = "Stop recording after a pause in speech", IsChecked = settings.AutoStopEnabled };
         var silenceSlider = new Slider
         {
@@ -125,6 +119,7 @@ public sealed class SettingsWindow : Window
             };
             panel.Children.Add(registerButton);
             panel.Children.Add(registerStatus);
+            panel.Children.Add(Note("Change the key combo any time in GNOME Settings → Keyboard → Custom Shortcuts."));
         }
 
         // --- System ---
@@ -158,7 +153,7 @@ public sealed class SettingsWindow : Window
         {
             checkButton.IsEnabled = false;
             updateStatus.Text = "Checking…";
-            var status = await Task.Run(() => new LinuxUpdater(settings).CheckAndInstallAsync(manual: true));
+            var status = await System.Threading.Tasks.Task.Run(() => new LinuxUpdater(settings).CheckAndInstallAsync(manual: true));
             updateStatus.Text = status;
             checkButton.IsEnabled = true;
         };
@@ -172,15 +167,17 @@ public sealed class SettingsWindow : Window
     private static TextBlock Header(string text) => new()
     {
         Text = text,
-        FontWeight = Avalonia.Media.FontWeight.SemiBold,
+        FontWeight = FontWeight.SemiBold,
+        FontSize = ThemeTokens.HeadingSize,
+        Foreground = ThemeTokens.TextPrimaryBrush,
         Margin = new Thickness(0, 8, 0, 0),
     };
 
     private static TextBlock Note(string text) => new()
     {
         Text = text,
-        Opacity = 0.7,
+        Foreground = ThemeTokens.TextSecondaryBrush,
         FontSize = 12,
-        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+        TextWrapping = TextWrapping.Wrap,
     };
 }

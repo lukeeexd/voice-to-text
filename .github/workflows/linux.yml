@@ -65,6 +65,25 @@ jobs:
           cat selftest-output.txt
           grep -qi "ask not what your country" selftest-output.txt
 
+      - name: Build AppImage
+        run: |
+          sudo apt-get install -y desktop-file-utils
+          bash installer/appimage/build-appimage.sh publish-linux .
+
+      - name: Battery inside the AppImage (packaging under test)
+        run: |
+          ./VoiceToText-x86_64.AppImage --appimage-extract-and-run --vadtest
+          ./VoiceToText-x86_64.AppImage --appimage-extract-and-run --controllertest
+          ./VoiceToText-x86_64.AppImage --appimage-extract-and-run --uitest
+          ./VoiceToText-x86_64.AppImage --appimage-extract-and-run --version
+
+      - name: Upload AppImage artifact
+        if: matrix.os == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceToText-AppImage
+          path: VoiceToText-x86_64.AppImage
+
       - name: Upload outputs on failure
         if: failure()
         uses: actions/upload-artifact@v4

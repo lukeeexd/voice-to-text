@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=VoiceToText
+Comment=Local voice dictation (Whisper)
+Exec=voicetotext
+Icon=voicetotext
+Terminal=false
+Categories=Utility;Accessibility;

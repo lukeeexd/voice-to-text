@@ -186,7 +186,7 @@ internal sealed class OnboardingWizard : Form
             if (!hasModifier && key is Keys.Escape or Keys.Tab or Keys.Enter)
                 return base.ProcessCmdKey(ref msg, keyData);
 
-            var definition = HotkeyDefinition.FromKeyEvent(keyData);
+            var definition = WinHotkeys.FromKeyEvent(keyData);
             if (definition is not null)
             {
                 _hotkey = definition;

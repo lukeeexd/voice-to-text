@@ -15,6 +15,10 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // Wire HotkeyDefinition.Describe() to WinForms key names before anything
+        // (self-tests included) renders a hotkey label.
+        Hotkeys.WinHotkeys.RegisterKeyNames();
+
         if (args.Length > 0 && args[0].Equals("--selftest", StringComparison.OrdinalIgnoreCase))
         {
             var wav = args.Length > 1 ? args[1] : "jfk.wav";

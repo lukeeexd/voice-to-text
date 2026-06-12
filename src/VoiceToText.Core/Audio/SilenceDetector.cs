@@ -1,4 +1,4 @@
-namespace VoiceToText.Audio;
+﻿namespace VoiceToText.Audio;
 
 /// <summary>
 /// Detects when speech has been followed by a sustained pause, so recording can
@@ -9,7 +9,7 @@ namespace VoiceToText.Audio;
 ///
 /// Pure (no audio device) so it can be unit-tested with synthetic levels.
 /// </summary>
-internal sealed class SilenceDetector
+public sealed class SilenceDetector
 {
     private const double CalibrationSeconds = 0.25;
     private const double SpeechMargin = 3.0;   // speech must exceed noiseFloor * this
@@ -33,7 +33,7 @@ internal sealed class SilenceDetector
 
     /// <summary>
     /// Feed one audio chunk's RMS level and its duration in seconds. Returns true
-    /// exactly once — when trailing silence after speech reaches the configured
+    /// exactly once â€” when trailing silence after speech reaches the configured
     /// duration. Returns false on every other call.
     /// </summary>
     public bool Process(double rms, double chunkSeconds)

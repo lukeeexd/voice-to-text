@@ -325,7 +325,7 @@ internal sealed class SettingsPage : UserControl
         if (!hasModifier && key is Keys.Escape or Keys.Tab or Keys.Enter)
             return false;
 
-        var definition = HotkeyDefinition.FromKeyEvent(keyData);
+        var definition = WinHotkeys.FromKeyEvent(keyData);
         if (definition is not null)
         {
             _hotkey = definition;

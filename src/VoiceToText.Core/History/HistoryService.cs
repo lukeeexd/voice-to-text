@@ -11,20 +11,27 @@ public sealed class HistoryService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    private static string HistoryPath => Path.Combine(AppPaths.DataDir, "history.json");
+    private readonly string _path;
 
     public HistoryStore Data { get; private set; } = new();
 
     /// <summary>Newest-first entries for display.</summary>
     public IReadOnlyList<HistoryEntry> Entries => Data.Entries;
 
-    public HistoryService() => Load();
+    public HistoryService() : this(Path.Combine(AppPaths.DataDir, "history.json")) { }
+
+    /// <summary>Load/save against a specific file (self-tests use a temp path).</summary>
+    public HistoryService(string path)
+    {
+        _path = path;
+        Load();
+    }
 
     private void Load()
     {
         try
         {
-            var path = HistoryPath;
+            var path = _path;
             if (File.Exists(path))
             {
                 var loaded = JsonSerializer.Deserialize<HistoryStore>(File.ReadAllText(path), JsonOptions);
@@ -41,7 +48,7 @@ public sealed class HistoryService
     {
         try
         {
-            var path = HistoryPath;
+            var path = _path;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(Data, JsonOptions));
         }

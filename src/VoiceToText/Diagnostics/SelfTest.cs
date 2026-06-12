@@ -28,6 +28,8 @@ internal static class SelfTest
     public static int RunUpdateCheck(string outputPath, string? feedFolder)
         => CoreSelfTest.RunUpdateCheck(outputPath, feedFolder);
 
+    public static int RunControllerTest(string outputPath) => CoreSelfTest.RunControllerTest(outputPath);
+
     /// <summary>Checks the pure LevelMeter mapping (RMS -> bar heights). No UI, no mic.</summary>
     public static int RunWidgetTest(string outputPath)
     {

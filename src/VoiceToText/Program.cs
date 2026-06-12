@@ -54,6 +54,9 @@ internal static class Program
         if (args.Length > 0 && args[0].Equals("--logtest", StringComparison.OrdinalIgnoreCase))
             return SelfTest.RunLogTest("logtest-output.txt");
 
+        if (args.Length > 0 && args[0].Equals("--controllertest", StringComparison.OrdinalIgnoreCase))
+            return SelfTest.RunControllerTest(args.Length > 1 ? args[1] : "controllertest-output.txt");
+
         if (args.Length > 0 && args[0].Equals("--abouttest", StringComparison.OrdinalIgnoreCase))
             return SelfTest.RunAboutTest("abouttest-output.txt");
 

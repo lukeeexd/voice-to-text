@@ -383,6 +383,133 @@ public static class CoreSelfTest
         return allPass;
     }
 
+    /// <summary>End-to-end engine flow with fakes: toggle → samples → STT → rules → inject → stats/history.</summary>
+    public static int RunControllerTest(string outputPath)
+    {
+        var log = new StringBuilder();
+        var allPass = true;
+        void Pass(string name, bool ok, string detail = "")
+        {
+            allPass &= ok;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] {name}{(detail.Length > 0 ? ": " + detail : "")}");
+        }
+
+        var dir = Path.Combine(Path.GetTempPath(), "vtt-controllertest");
+        try { if (Directory.Exists(dir)) Directory.Delete(dir, true); } catch { }
+        Directory.CreateDirectory(dir);
+
+        try
+        {
+            var audio = new FakeAudioSource(new float[16_000]); // 1 s of samples
+            var stt = new FakeStt("hello new line world");
+            var injector = new FakeInjector();
+            var settings = new AppSettings
+            {
+                SoundCuesEnabled = false,
+                HistoryEnabled = true,
+                AutoStopEnabled = false,
+                SpokenCommandsEnabled = true,
+            };
+            var stats = new StatsService(Path.Combine(dir, "stats.json"));
+            var history = new HistoryService(Path.Combine(dir, "history.json"));
+
+            var c = new App.DictationController(audio, stt, injector, null, settings, stats, history);
+            var states = new List<App.DictationState>();
+            c.StatusChanged += (s, _) => states.Add(s);
+
+            c.ToggleAsync().GetAwaiter().GetResult();           // start
+            Pass("recording after first toggle", c.State == App.DictationState.Recording, $"={c.State}");
+            c.ToggleAsync().GetAwaiter().GetResult();           // stop + transcribe
+            Pass("idle after second toggle", c.State == App.DictationState.Idle, $"={c.State}");
+            Pass("audio was started and stopped", audio.Started && audio.Stopped);
+            Pass("text rules applied (new line)", injector.LastText == "hello\nworld", injector.LastText ?? "null");
+            Pass("stats recorded one dictation", stats.Data.TotalDictations == 1, $"={stats.Data.TotalDictations}");
+            Pass("stats persisted to temp path", File.Exists(Path.Combine(dir, "stats.json")));
+            Pass("history recorded", history.Data.Entries.Count == 1 && history.Data.Entries[0].Text == "hello\nworld",
+                $"count={history.Data.Entries.Count}");
+            Pass("state sequence recording→…→idle", states.Count >= 3
+                && states[0] == App.DictationState.Recording
+                && states[^1] == App.DictationState.Idle, string.Join(",", states));
+
+            // Empty transcript: nothing injected, nothing counted.
+            var audio2 = new FakeAudioSource(new float[16_000]);
+            var c2 = new App.DictationController(audio2, new FakeStt("   "), injector, null, settings, stats, history);
+            injector.LastText = null;
+            c2.ToggleAsync().GetAwaiter().GetResult();
+            c2.ToggleAsync().GetAwaiter().GetResult();
+            Pass("blank transcript not injected", injector.LastText is null, injector.LastText ?? "null");
+            Pass("blank transcript not counted", stats.Data.TotalDictations == 1, $"={stats.Data.TotalDictations}");
+
+            // A failing audio start surfaces via StatusChanged and leaves the controller idle.
+            var c3 = new App.DictationController(new ThrowingAudioSource(), stt, injector, null, settings, stats, history);
+            string? lastStatus = null;
+            c3.StatusChanged += (_, msg) => lastStatus = msg;
+            c3.ToggleAsync().GetAwaiter().GetResult();
+            Pass("start failure → idle", c3.State == App.DictationState.Idle, $"={c3.State}");
+            Pass("start failure surfaced", lastStatus is not null && lastStatus.Contains("Could not start"), lastStatus ?? "null");
+        }
+        catch (Exception ex)
+        {
+            Pass("controller flow ran without throwing", false, $"{ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            try { Directory.Delete(dir, true); } catch { }
+        }
+
+        log.AppendLine(allPass ? "ALL CONTROLLER TESTS PASSED" : "SOME CONTROLLER TESTS FAILED");
+        var result = log.ToString();
+        File.WriteAllText(outputPath, result);
+        Console.WriteLine(result);
+        return allPass ? 0 : 1;
+    }
+
+    private sealed class FakeAudioSource(float[] samples) : Audio.IAudioSource
+    {
+        public bool Started;
+        public bool Stopped;
+        public bool IsRecording { get; private set; }
+        public event Action? SilenceDetected { add { } remove { } }
+        public event Action<float>? LevelChanged { add { } remove { } }
+        public event Action<Exception>? RecordingFailed { add { } remove { } }
+        public void Start(string? deviceId, bool autoStop, double autoStopSilenceSeconds)
+        {
+            Started = true;
+            IsRecording = true;
+        }
+        public Task<float[]> StopAndGetSamplesAsync()
+        {
+            Stopped = true;
+            IsRecording = false;
+            return Task.FromResult(samples);
+        }
+    }
+
+    private sealed class ThrowingAudioSource : Audio.IAudioSource
+    {
+        public bool IsRecording => false;
+        public event Action? SilenceDetected { add { } remove { } }
+        public event Action<float>? LevelChanged { add { } remove { } }
+        public event Action<Exception>? RecordingFailed { add { } remove { } }
+        public void Start(string? deviceId, bool autoStop, double autoStopSilenceSeconds)
+            => throw new InvalidOperationException("no capture device");
+        public Task<float[]> StopAndGetSamplesAsync() => Task.FromResult(Array.Empty<float>());
+    }
+
+    private sealed class FakeStt(string result) : Stt.ISttEngine
+    {
+        public Task LoadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task<string> TranscribeAsync(float[] samples, CancellationToken cancellationToken = default)
+            => Task.FromResult(result);
+        public void Dispose() { }
+    }
+
+    private sealed class FakeInjector : Injection.ITextInjector
+    {
+        public string? LastText;
+        public void Inject(string text) => LastText = text;
+    }
+
     private static async Task<int> RunAsync(string wavPath, string outputPath, GgmlType modelType)
     {
         var log = new StringBuilder();

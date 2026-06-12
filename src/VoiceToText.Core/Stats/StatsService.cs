@@ -11,17 +11,24 @@ public sealed class StatsService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
-    private static string StatsPath => Path.Combine(AppPaths.DataDir, "stats.json");
+    private readonly string _path;
 
     public StatsData Data { get; private set; } = new();
 
-    public StatsService() => Load();
+    public StatsService() : this(Path.Combine(AppPaths.DataDir, "stats.json")) { }
+
+    /// <summary>Load/save against a specific file (self-tests use a temp path).</summary>
+    public StatsService(string path)
+    {
+        _path = path;
+        Load();
+    }
 
     private void Load()
     {
         try
         {
-            var path = StatsPath;
+            var path = _path;
             if (File.Exists(path))
             {
                 var loaded = JsonSerializer.Deserialize<StatsData>(File.ReadAllText(path), JsonOptions);
@@ -38,7 +45,7 @@ public sealed class StatsService
     {
         try
         {
-            var path = StatsPath;
+            var path = _path;
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(Data, JsonOptions));
         }

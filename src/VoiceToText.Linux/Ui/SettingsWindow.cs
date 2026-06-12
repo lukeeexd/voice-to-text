@@ -144,6 +144,28 @@ public sealed class SettingsWindow : Window
         panel.Children.Add(autostart);
         panel.Children.Add(forceCpu);
 
+        // --- Updates ---
+        panel.Children.Add(Header("Updates"));
+        var autoUpdate = new CheckBox { Content = "Check for updates automatically", IsChecked = settings.AutoUpdateEnabled };
+        autoUpdate.IsCheckedChanged += (_, _) =>
+        {
+            settings.AutoUpdateEnabled = autoUpdate.IsChecked == true;
+            settings.Save();
+        };
+        var updateStatus = Note("");
+        var checkButton = new Button { Content = "Check for updates now" };
+        checkButton.Click += async (_, _) =>
+        {
+            checkButton.IsEnabled = false;
+            updateStatus.Text = "Checking…";
+            var status = await Task.Run(() => new LinuxUpdater(settings).CheckAndInstallAsync(manual: true));
+            updateStatus.Text = status;
+            checkButton.IsEnabled = true;
+        };
+        panel.Children.Add(autoUpdate);
+        panel.Children.Add(checkButton);
+        panel.Children.Add(updateStatus);
+
         Content = new ScrollViewer { Content = panel };
     }
 

@@ -62,10 +62,22 @@ public sealed class UpdateService(AppSettings settings)
         }
     }
 
-    public async Task<UpdateCheckResult> CheckAsync(CancellationToken cancellationToken = default)
+    public Task<UpdateCheckResult> CheckAsync(CancellationToken cancellationToken = default)
+        => CheckCoreAsync(UpdateChecker.Decide, force: false, cancellationToken);
+
+    /// <summary>Check using the manifest's Linux (AppImage) fields. <paramref name="force"/>
+    /// bypasses the AutoUpdateEnabled gate (the settings window's manual check).</summary>
+    public Task<UpdateCheckResult> CheckLinuxAsync(bool force = false, CancellationToken cancellationToken = default)
+        => CheckCoreAsync(UpdateChecker.DecideLinux, force, cancellationToken);
+
+    private async Task<UpdateCheckResult> CheckCoreAsync(
+        Func<bool, string?, Version?, UpdateManifest?, UpdateCheckResult> decide,
+        bool force,
+        CancellationToken cancellationToken)
     {
-        if (!settings.AutoUpdateEnabled || string.IsNullOrWhiteSpace(settings.UpdateFeedFolder))
-            return UpdateChecker.Decide(settings.AutoUpdateEnabled, settings.UpdateFeedFolder, CurrentVersion, null);
+        var enabled = settings.AutoUpdateEnabled || force;
+        if (!enabled || string.IsNullOrWhiteSpace(settings.UpdateFeedFolder))
+            return decide(enabled, settings.UpdateFeedFolder, CurrentVersion, null);
 
         try
         {
@@ -87,7 +99,7 @@ public sealed class UpdateService(AppSettings settings)
             }
 
             var manifest = UpdateManifest.TryParse(json);
-            return UpdateChecker.Decide(true, settings.UpdateFeedFolder, CurrentVersion, manifest);
+            return decide(true, settings.UpdateFeedFolder, CurrentVersion, manifest);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException
                                        or OperationCanceledException or NotSupportedException or ArgumentException
@@ -102,10 +114,17 @@ public sealed class UpdateService(AppSettings settings)
     /// never run it straight off a share or the network — verify its SHA-256 if the
     /// manifest provides one, and return the staged path. Cleans up partials on failure.
     /// </summary>
-    public async Task<string> StageInstallerAsync(UpdateManifest manifest, CancellationToken cancellationToken = default)
+    public Task<string> StageInstallerAsync(UpdateManifest manifest, CancellationToken cancellationToken = default)
+        => StageFileAsync(manifest.SetupFileName!, manifest.Sha256, cancellationToken);
+
+    /// <summary>Stage the Linux AppImage named by the manifest, SHA-verified.</summary>
+    public Task<string> StageLinuxAsync(UpdateManifest manifest, CancellationToken cancellationToken = default)
+        => StageFileAsync(manifest.LinuxFileName!, manifest.LinuxSha256, cancellationToken);
+
+    private async Task<string> StageFileAsync(string fileName, string? sha256, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(StagingDir);
-        var dest = Path.Combine(StagingDir, manifest.SetupFileName!);
+        var dest = Path.Combine(StagingDir, fileName);
         var part = dest + ".part";
 
         try
@@ -114,7 +133,7 @@ public sealed class UpdateService(AppSettings settings)
 
             if (IsHttpFeed(settings.UpdateFeedFolder))
             {
-                using var response = await Http.GetAsync(FeedUrl(manifest.SetupFileName!), HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                using var response = await Http.GetAsync(FeedUrl(fileName), HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
                 await using var src = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
                 await using var dst = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -122,16 +141,16 @@ public sealed class UpdateService(AppSettings settings)
             }
             else
             {
-                var source = Path.Combine(settings.UpdateFeedFolder, manifest.SetupFileName!);
+                var source = Path.Combine(settings.UpdateFeedFolder, fileName);
                 await using var src = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read);
                 await using var dst = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None);
                 await src.CopyToAsync(dst, cancellationToken).ConfigureAwait(false);
             }
 
-            if (!string.IsNullOrWhiteSpace(manifest.Sha256))
+            if (!string.IsNullOrWhiteSpace(sha256))
             {
                 var actual = await ComputeSha256Async(part, cancellationToken).ConfigureAwait(false);
-                if (!string.Equals(actual, manifest.Sha256!.Trim(), StringComparison.OrdinalIgnoreCase))
+                if (!string.Equals(actual, sha256!.Trim(), StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("The downloaded update failed its integrity check (SHA-256 mismatch).");
             }
 

@@ -236,6 +236,14 @@ public static class CoreSelfTest
         var higher = UpdateChecker.Decide(true, "x", cur, M("1.0.1"));
         Pass("higher => update available", higher.Decision == UpdateDecision.UpdateAvailable && higher.AvailableVersion == new Version(1, 0, 1, 0));
 
+        // --- Pure DecideLinux cases (the AppImage feed fields) ---
+        static UpdateManifest ML(string? ver, string? file = "VoiceToText-x86_64.AppImage") => new() { LinuxVersion = ver, LinuxFileName = file };
+        Pass("linux: higher => update available", UpdateChecker.DecideLinux(true, "x", cur, ML("1.0.1")).Decision == UpdateDecision.UpdateAvailable);
+        Pass("linux: equal => up to date", UpdateChecker.DecideLinux(true, "x", cur, ML("1.0.0")).Decision == UpdateDecision.UpToDate);
+        Pass("linux: windows-only manifest => invalid", UpdateChecker.DecideLinux(true, "x", cur, M("2.0.0")).Decision == UpdateDecision.ManifestInvalid);
+        Pass("linux: traversal file name => invalid", UpdateChecker.DecideLinux(true, "x", cur, ML("2.0.0", "../x")).Decision == UpdateDecision.ManifestInvalid);
+        Pass("windows decide ignores linux-only manifest", UpdateChecker.Decide(true, "x", cur, ML("2.0.0")).Decision == UpdateDecision.ManifestInvalid);
+
         // --- Pure feed-kind detection (no network is ever touched in self-tests) ---
         Pass("https feed detected", UpdateService.IsHttpFeed("https://github.com/x/y/releases/latest/download"));
         Pass("http feed detected", UpdateService.IsHttpFeed("http://example.test/feed"));

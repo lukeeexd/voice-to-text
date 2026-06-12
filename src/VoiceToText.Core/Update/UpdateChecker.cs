@@ -49,6 +49,15 @@ public static class VersionParsing
 public static class UpdateChecker
 {
     public static UpdateCheckResult Decide(bool enabled, string? feedFolder, Version? current, UpdateManifest? manifest)
+        => DecideCore(enabled, feedFolder, current, manifest, manifest?.Version, manifest?.SetupFileName);
+
+    /// <summary>Same decision table as <see cref="Decide"/>, reading the Linux (AppImage) fields.</summary>
+    public static UpdateCheckResult DecideLinux(bool enabled, string? feedFolder, Version? current, UpdateManifest? manifest)
+        => DecideCore(enabled, feedFolder, current, manifest, manifest?.LinuxVersion, manifest?.LinuxFileName);
+
+    private static UpdateCheckResult DecideCore(
+        bool enabled, string? feedFolder, Version? current, UpdateManifest? manifest,
+        string? version, string? fileName)
     {
         if (!enabled)
             return new(UpdateDecision.Disabled, current, null, null, null);
@@ -58,12 +67,12 @@ public static class UpdateChecker
             return new(UpdateDecision.NoFeedConfigured, current, null, null, null);
         if (manifest is null)
             return new(UpdateDecision.ManifestInvalid, current, null, null, "No valid update manifest.");
-        if (string.IsNullOrWhiteSpace(manifest.Version) || string.IsNullOrWhiteSpace(manifest.SetupFileName))
+        if (string.IsNullOrWhiteSpace(version) || string.IsNullOrWhiteSpace(fileName))
             return new(UpdateDecision.ManifestInvalid, current, null, manifest, "Manifest is missing the version or setup file name.");
-        if (!IsSafeSetupFileName(manifest.SetupFileName!))
+        if (!IsSafeSetupFileName(fileName!))
             return new(UpdateDecision.ManifestInvalid, current, null, manifest, "Manifest setup file name is not a plain file name in the feed folder.");
 
-        var available = VersionParsing.TryNormalize(manifest.Version);
+        var available = VersionParsing.TryNormalize(version);
         if (available is null)
             return new(UpdateDecision.ManifestInvalid, current, null, manifest, "Manifest version is not a valid version number.");
 

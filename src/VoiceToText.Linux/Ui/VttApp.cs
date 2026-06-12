@@ -64,6 +64,10 @@ public sealed class VttApp : Application
         if (!services.Settings.OnboardingCompleted)
             Dispatcher.UIThread.Post(() => new FirstRunWindow(services).Show());
 
+        // Startup update check (notifies + self-installs when one is found).
+        if (services.Settings.AutoUpdateEnabled)
+            _ = Task.Run(() => new LinuxUpdater(services.Settings).CheckAndInstallAsync(manual: false));
+
         base.OnFrameworkInitializationCompleted();
     }
 

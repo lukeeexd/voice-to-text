@@ -16,6 +16,12 @@ public sealed class UpdateManifest
     public bool Mandatory { get; set; }
     public DateTimeOffset? ReleasedUtc { get; set; }
 
+    // Linux (AppImage) release — additive: old Windows clients ignore unknown
+    // fields, and these stay null while no Linux build is published.
+    public string? LinuxVersion { get; set; }
+    public string? LinuxFileName { get; set; }
+    public string? LinuxSha256 { get; set; }
+
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNameCaseInsensitive = true,

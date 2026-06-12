@@ -3,8 +3,10 @@ using VoiceToText.Diagnostics;
 
 namespace VoiceToText.Linux.Platform;
 
+// PUBLIC on purpose: Tmds.DBus emits proxy types into a separate dynamic assembly,
+// which cannot implement internal interfaces (TypeLoadException at CreateProxy).
 [DBusInterface("org.freedesktop.portal.RemoteDesktop")]
-internal interface IRemoteDesktopPortal : IDBusObject
+public interface IRemoteDesktopPortal : IDBusObject
 {
     Task<ObjectPath> CreateSessionAsync(IDictionary<string, object> options);
     Task<ObjectPath> SelectDevicesAsync(ObjectPath sessionHandle, IDictionary<string, object> options);
@@ -13,7 +15,7 @@ internal interface IRemoteDesktopPortal : IDBusObject
 }
 
 [DBusInterface("org.freedesktop.portal.Request")]
-internal interface IPortalRequest : IDBusObject
+public interface IPortalRequest : IDBusObject
 {
     Task<IDisposable> WatchResponseAsync(Action<(uint response, IDictionary<string, object> results)> handler);
 }

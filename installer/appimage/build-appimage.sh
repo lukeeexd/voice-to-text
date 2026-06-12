@@ -18,6 +18,15 @@ APPDIR="$WORK/AppDir"
 mkdir -p "$APPDIR/usr/bin"
 cp -r "$PUBLISH_DIR"/. "$APPDIR/usr/bin/"
 chmod +x "$APPDIR/usr/bin/voicetotext"
+
+# Bundle ICU from the build host: .NET fails fast without libicu, and minimal
+# systems don't ship it. Self-contained apps probe the app dir first, so the
+# versioned .so files (and their symlinks, -P) just need to sit beside the exe.
+for lib in /usr/lib/x86_64-linux-gnu/libicuuc.so.* \
+           /usr/lib/x86_64-linux-gnu/libicui18n.so.* \
+           /usr/lib/x86_64-linux-gnu/libicudata.so.*; do
+  cp -P "$lib" "$APPDIR/usr/bin/"
+done
 ln -s usr/bin/voicetotext "$APPDIR/AppRun"
 cp "$SCRIPT_DIR/voicetotext.desktop" "$APPDIR/"
 cp "$SCRIPT_DIR/voicetotext.png" "$APPDIR/"

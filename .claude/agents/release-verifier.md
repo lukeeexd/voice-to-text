@@ -13,9 +13,9 @@ Checks (report each as pass/fail with evidence):
 
 1. `latest.json` parses as JSON and contains `Version` and `SetupFileName`
    (`Sha256` / `ReleaseNotes` optional but expected).
-2. `Version` equals `<Version>` in `src/VoiceToText/VoiceToText.csproj` (numeric
-   compare). The updater offers updates only when manifest > installed, so
-   equal-to-csproj is correct for a fresh release.
+2. `Version` equals `<Version>` in `src/Version.props` (numeric compare; shared
+   by both heads). The updater offers updates only when manifest > installed, so
+   equal-to-props is correct for a fresh release.
 3. `SetupFileName` is a bare filename (no path separators, no `..`, no drive colon)
    and that exact file exists in the feed folder.
 4. `Get-FileHash <feed-exe> -Algorithm SHA256` equals the manifest `Sha256`
@@ -24,6 +24,11 @@ Checks (report each as pass/fail with evidence):
    plausibly sized (tens of MB — a few-byte file means a dummy artifact).
 6. No stray dummy artifacts in the feed (e.g. a `VoiceToText-Setup.exe` containing
    the text `dummy-installer-bytes` — debris from a misrouted `--updatecheck`).
+7. Linux trio (only when present — it is absent until the Linux beta ships):
+   `LinuxVersion` equals `Version.props`, `LinuxFileName` is a bare filename
+   ending `.AppImage` that exists in the feed, and its SHA-256 equals
+   `LinuxSha256`. All three present together or all absent — a partial trio is
+   a FAIL (it would break the Linux updater's decision logic).
 
 Output a table of checks with pass/fail and a final verdict. If anything fails, state
 exactly what to fix (which file, which field) — do not fix it yourself.

@@ -41,8 +41,8 @@ Standing instruction: after ANY version bump, ship — do not wait to be asked.
    ```
 
    `SetupFileName` must be a bare filename (no path separators — the updater rejects
-   anything else). `Version` must exactly match the csproj bump; this is the only
-   hand-typed copy of the version and the #1 drift point.
+   anything else). `Version` must exactly match the Version.props bump; this is the
+   only hand-typed copy of the version and the #1 drift point.
 7. **GitHub release** (canonical feed) — from the repo root:
 
    ```powershell
@@ -63,6 +63,29 @@ Standing instruction: after ANY version bump, ship — do not wait to be asked.
      uses a `%TEMP%` feed) and check `updatecheck-output.txt` + exit code 0.
    - Optionally launch the `release-verifier` agent for an independent check.
 9. **Commit** — `vX.Y.Z: <summary>` per repo convention, and `git push`.
+
+## Linux (AppImage) — ⛔ GATED until phase-4 VM validation passes
+
+Do NOT add the Linux fields to `latest.json` before the phase-4 gate clears
+(see `docs/superpowers/specs/2026-06-12-linux-port-design.md`); publishing them
+turns on the Linux self-updater for anyone running the AppImage. Once cleared,
+between steps 7 and 8:
+
+L1. Tagging the release (step 7) triggers `.github/workflows/release.yml`,
+    which builds `VoiceToText-x86_64.AppImage`, smoke-tests inside it, and
+    attaches it to the same release. Wait: `gh run watch --exit-status` on the
+    `release` workflow run.
+L2. Download it back and hash it:
+    `gh release download v<ver> --pattern VoiceToText-x86_64.AppImage --dir $env:TEMP\vtt-rel`
+    then SHA-256 it (lowercase).
+L3. Rewrite `latest.json` ADDING (keep the Windows fields intact):
+    `"LinuxVersion": "<ver>", "LinuxFileName": "VoiceToText-x86_64.AppImage", "LinuxSha256": "<hash>"`
+L4. Replace the release's manifest: `gh release upload v<ver> latest.json --clobber`,
+    and copy the AppImage + updated latest.json to the local feed folder too.
+L5. Verify (additional to step 8): the release's asset list contains the
+    AppImage; re-download `latest.json` from `releases/latest/download` and check
+    the Linux trio parses and the SHA matches the downloaded AppImage. First
+    Linux release notes must say **beta**.
 
 ## Hard rules
 

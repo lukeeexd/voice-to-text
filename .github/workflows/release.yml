@@ -1,0 +1,47 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    # ubuntu-22.04 deliberately: building against the oldest supported glibc
+    # keeps the AppImage runnable on every newer distro.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish linux-x64
+        run: dotnet publish src/VoiceToText.Linux/VoiceToText.Linux.csproj -c Release -r linux-x64 --self-contained -o publish-linux
+
+      - name: Build AppImage
+        run: |
+          sudo apt-get update && sudo apt-get install -y desktop-file-utils
+          bash installer/appimage/build-appimage.sh publish-linux .
+
+      - name: Smoke inside the AppImage
+        run: |
+          ./VoiceToText-x86_64.AppImage --appimage-extract-and-run --vadtest
+          ./VoiceToText-x86_64.AppImage --appimage-extract-and-run --controllertest
+          echo "version: $(./VoiceToText-x86_64.AppImage --appimage-extract-and-run --version)"
+
+      - name: Upload artifact (dry runs via workflow_dispatch)
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceToText-AppImage-release
+          path: VoiceToText-x86_64.AppImage
+
+      - name: Attach to the GitHub release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" VoiceToText-x86_64.AppImage --clobber

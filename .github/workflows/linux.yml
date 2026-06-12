@@ -30,6 +30,9 @@ jobs:
           sudo apt-get update && sudo apt-get install -y pulseaudio pulseaudio-utils
           pulseaudio --start --exit-idle-time=-1
           pactl load-module module-null-sink sink_name=vmic
+          # A null sink suspends when idle and its monitor then produces NO data.
+          # Feed it a continuous tone so the monitor behaves like a real microphone.
+          pactl load-module module-sine sink=vmic frequency=440
           pactl set-default-source vmic.monitor
           pactl info | grep -E "Server Name|Default Source"
 

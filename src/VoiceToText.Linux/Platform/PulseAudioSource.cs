@@ -117,7 +117,11 @@ public sealed class PulseAudioSource : IAudioSource
         if (!IsRecording)
             return [];
         _stopRequested = true;
-        await (_stopped?.Task ?? Task.CompletedTask).ConfigureAwait(false);
+        // A stalled source (e.g. a suspended monitor) can keep pa_simple_read blocked
+        // indefinitely; never let that hang a stop. The background read thread cleans
+        // the stream up itself whenever the read finally returns.
+        var stopped = _stopped?.Task ?? Task.CompletedTask;
+        await Task.WhenAny(stopped, Task.Delay(TimeSpan.FromSeconds(3))).ConfigureAwait(false);
 
         float[] result;
         lock (_lock)

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/VoiceToText/VoiceToText.csproj" />
+    <Project Path="src/VoiceToText.Core/VoiceToText.Core.csproj" />
   </Folder>
 </Solution>

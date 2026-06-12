@@ -68,6 +68,28 @@ internal static partial class X11Native
     [LibraryImport(LibXtst)]
     public static partial int XTestFakeKeyEvent(IntPtr display, uint keycode, int isPress, nuint delay);
 
+    [LibraryImport(LibX11, StringMarshalling = StringMarshalling.Utf8)]
+    public static partial nuint XInternAtom(IntPtr display, string atomName, int onlyIfExists);
+
+    [LibraryImport(LibX11)]
+    public static partial int XGetWindowProperty(IntPtr display, nuint window, nuint property,
+        long longOffset, long longLength, int delete, nuint reqType,
+        out nuint actualType, out int actualFormat, out nuint nItems, out nuint bytesAfter,
+        out IntPtr prop);
+
+    [LibraryImport(LibX11)]
+    public static partial int XFree(IntPtr data);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct XClassHint
+    {
+        public IntPtr res_name;
+        public IntPtr res_class;
+    }
+
+    [LibraryImport(LibX11)]
+    public static partial int XGetClassHint(IntPtr display, nuint window, out XClassHint hint);
+
     /// <summary>X11 XKeyEvent (64-bit layout); embedded in the 192-byte XEvent union.</summary>
     [StructLayout(LayoutKind.Sequential)]
     public struct XKeyEvent

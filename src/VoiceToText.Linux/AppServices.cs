@@ -42,6 +42,7 @@ public sealed class AppServices : IDisposable
         Controller = new DictationController(
             new PulseAudioSource(), _stt, Injector, new PulseCuePlayer(),
             Settings, Stats, History);
+        Controller.AppNameProvider = "Desktop"; // Wayland has no focused-app API
         HotkeyTier = SessionInfo.PickHotkeyTier();
     }
 
@@ -59,7 +60,10 @@ public sealed class AppServices : IDisposable
                 _x11Hotkey.Pressed += () =>
                 {
                     if (!Settings.HoldToTalk || Controller.State == DictationState.Idle)
+                    {
+                        ResolveAppName();
                         _ = Controller.ToggleAsync();
+                    }
                 };
                 _x11Hotkey.Released += () =>
                 {
@@ -105,8 +109,17 @@ public sealed class AppServices : IDisposable
             return "ignored (debounce)";
 
         var wasIdle = Controller.State == DictationState.Idle;
+        if (wasIdle) ResolveAppName();
         _ = Controller.ToggleAsync();
         return wasIdle ? "starting" : "stopping";
+    }
+
+    /// <summary>Per-app stats attribution at dictation start: the focused app's WM_CLASS
+    /// on X11 sessions; the "Desktop" bucket on Wayland (no API exists there).</summary>
+    private void ResolveAppName()
+    {
+        if (HotkeyTier == HotkeyTier.X11Grab)
+            Controller.AppNameProvider = X11FocusTracker.GetFocusedAppName() ?? "Desktop";
     }
 
     private string RaiseOpenSettings()

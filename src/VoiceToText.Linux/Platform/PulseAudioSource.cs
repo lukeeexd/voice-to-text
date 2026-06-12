@@ -40,9 +40,20 @@ public sealed class PulseAudioSource : IAudioSource
             rate = SampleRate,
             channels = 1,
         };
-        var stream = PulseNative.pa_simple_new(
+        // Without explicit buffer attributes pulse picks a large default fragment
+        // (1-2 s), which both lags the level meter/VAD and delays stop. Ask for
+        // chunk-sized (100 ms) delivery instead.
+        var attr = new PulseNative.pa_buffer_attr
+        {
+            maxlength = uint.MaxValue,
+            tlength = uint.MaxValue,
+            prebuf = uint.MaxValue,
+            minreq = uint.MaxValue,
+            fragsize = ChunkSamples * sizeof(float),
+        };
+        var stream = PulseNative.pa_simple_new_attr(
             null, "VoiceToText", PulseNative.PA_STREAM_RECORD, deviceId, "dictation",
-            in spec, IntPtr.Zero, IntPtr.Zero, out var err);
+            in spec, IntPtr.Zero, in attr, out var err);
         if (stream == IntPtr.Zero)
             throw new InvalidOperationException($"PulseAudio: {PulseNative.ErrorText(err)}");
 

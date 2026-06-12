@@ -25,10 +25,26 @@ internal static partial class PulseNative
         public byte channels;  // 4-byte aligned => marshaled size 12, matching the C layout
     }
 
+    /// <summary>uint.MaxValue in any field means "server default".</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct pa_buffer_attr
+    {
+        public uint maxlength;
+        public uint tlength;
+        public uint prebuf;
+        public uint minreq;
+        public uint fragsize;
+    }
+
     [LibraryImport(LibSimple, StringMarshalling = StringMarshalling.Utf8)]
     public static partial IntPtr pa_simple_new(
         string? server, string name, int dir, string? dev, string streamName,
         in pa_sample_spec ss, IntPtr channelMap, IntPtr bufferAttr, out int error);
+
+    [LibraryImport(LibSimple, EntryPoint = "pa_simple_new", StringMarshalling = StringMarshalling.Utf8)]
+    public static partial IntPtr pa_simple_new_attr(
+        string? server, string name, int dir, string? dev, string streamName,
+        in pa_sample_spec ss, IntPtr channelMap, in pa_buffer_attr attr, out int error);
 
     [LibraryImport(LibSimple)]
     public static partial int pa_simple_read(IntPtr s, IntPtr data, nuint bytes, out int error);

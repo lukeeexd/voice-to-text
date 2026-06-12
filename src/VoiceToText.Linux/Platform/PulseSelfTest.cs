@@ -17,11 +17,11 @@ internal static class PulseSelfTest
         {
             var source = new PulseAudioSource();
             source.Start(null, autoStop: false, autoStopSilenceSeconds: 1.0);
-            Thread.Sleep(500);
+            Thread.Sleep(1000);
             var samples = source.StopAndGetSamplesAsync().GetAwaiter().GetResult();
-            // 0.5 s at 16 kHz ≈ 8000 samples; allow generous jitter from daemon buffering.
-            var ok = samples.Length is > 2_000 and < 32_000;
-            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] pulse capture roundtrip: {samples.Length} samples in 0.5s");
+            // 1 s at 16 kHz ≈ 16000 samples; allow generous jitter from daemon buffering.
+            var ok = samples.Length is > 6_000 and < 64_000;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] pulse capture roundtrip: {samples.Length} samples in 1s");
             log.AppendLine(ok ? "ALL AUDIO TESTS PASSED" : "SOME AUDIO TESTS FAILED");
             File.WriteAllText(outputPath, log.ToString());
             Console.WriteLine(log.ToString());

@@ -89,8 +89,18 @@ public sealed class AppServices : IDisposable
         _ => $"unknown command: {command}",
     };
 
+    private DateTime _lastToggleUtc = DateTime.MinValue;
+
     private string Toggle()
     {
+        // Desktop keybindings re-fire on keyboard auto-repeat when the chord is held
+        // a beat (~500 ms initial delay on GNOME), and the repeat's second --toggle
+        // would instantly stop the recording the press just started. Debounce.
+        var now = DateTime.UtcNow;
+        if ((now - _lastToggleUtc).TotalMilliseconds < 700)
+            return "ignored (debounce)";
+        _lastToggleUtc = now;
+
         var wasIdle = Controller.State == DictationState.Idle;
         _ = Controller.ToggleAsync();
         return wasIdle ? "starting" : "stopping";

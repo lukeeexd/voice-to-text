@@ -21,11 +21,14 @@ internal static class PulseSelfTest
             source.RecordingFailed += ex => readError = ex;
             source.LevelChanged += _ => levels++;
             source.Start(null, autoStop: false, autoStopSilenceSeconds: 1.0);
-            Thread.Sleep(1000);
+            // Virtual sources (CI's null-sink monitor) deliver audio in ~1-2 s bursts
+            // because null sinks are timer-scheduled; real mics clock continuously.
+            // Capture long enough to span multiple bursts.
+            Thread.Sleep(3000);
             var samples = source.StopAndGetSamplesAsync().GetAwaiter().GetResult();
-            // 1 s at 16 kHz ≈ 16000 samples; allow generous jitter from daemon buffering.
-            var ok = samples.Length is > 6_000 and < 64_000;
-            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] pulse capture roundtrip: {samples.Length} samples in 1s ({levels} chunks)");
+            // 3 s at 16 kHz ≈ 48000 samples; require at least ~1.5 s of audio.
+            var ok = samples.Length is > 24_000 and < 96_000;
+            log.AppendLine($"[{(ok ? "PASS" : "FAIL")}] pulse capture roundtrip: {samples.Length} samples in 3s ({levels} chunks)");
             if (readError is not null)
                 log.AppendLine($"read error: {readError.Message}");
             log.AppendLine(ok ? "ALL AUDIO TESTS PASSED" : "SOME AUDIO TESTS FAILED");

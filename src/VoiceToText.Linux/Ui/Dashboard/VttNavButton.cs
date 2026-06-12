@@ -32,7 +32,11 @@ internal sealed class VttNavButton : Control
         Cursor = new Cursor(StandardCursorType.Hand);
         PointerEntered += (_, _) => { _hover = true; InvalidateVisual(); };
         PointerExited += (_, _) => { _hover = false; InvalidateVisual(); };
-        PointerPressed += (_, _) => Clicked?.Invoke();
+        PointerPressed += (_, e) =>
+        {
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                Clicked?.Invoke();
+        };
     }
 
     public override void Render(DrawingContext context)

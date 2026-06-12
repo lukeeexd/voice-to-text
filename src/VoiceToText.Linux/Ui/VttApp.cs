@@ -36,6 +36,9 @@ public sealed class VttApp : Application
         if (services is null)
             return; // headless UI self-test boots the app class without engine services
 
+        // Single-threaded stats/history mutation: the dashboard reads them on the UI
+        // thread, so commits marshal there too (the Windows BeginInvoke invariant).
+        services.Controller.UiPost = action => Dispatcher.UIThread.Post(action);
         services.Controller.StatusChanged += (state, message) =>
             Dispatcher.UIThread.Post(() => OnStatus(state, message));
         services.OpenSettingsRequested += () =>
@@ -75,7 +78,7 @@ public sealed class VttApp : Application
     {
         var menu = new NativeMenu();
         var toggle = new NativeMenuItem("Toggle dictation");
-        toggle.Click += (_, _) => _ = services.Controller.ToggleAsync();
+        toggle.Click += (_, _) => _ = services.ToggleFromUi();
         var settings = new NativeMenuItem("Dashboard…");
         settings.Click += (_, _) => ShowDashboard();
         var quit = new NativeMenuItem("Quit");

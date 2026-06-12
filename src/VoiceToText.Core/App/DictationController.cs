@@ -42,6 +42,14 @@ public sealed class DictationController(
     /// app set this before each dictation; defaults to "Unknown".</summary>
     public string AppNameProvider { get; set; } = "Unknown";
 
+    /// <summary>
+    /// Marshal hook for committing stats/history. Heads with a UI thread that READS
+    /// those services (the dashboard) set this to their dispatcher post so mutation
+    /// stays single-threaded — the same invariant the Windows head keeps via
+    /// BeginInvoke. Null = commit inline (headless: no concurrent reader exists).
+    /// </summary>
+    public Action<Action>? UiPost { get; set; }
+
     public async Task ToggleAsync()
     {
         if (Interlocked.CompareExchange(ref _busy, 0, 0) == 1)
@@ -129,10 +137,15 @@ public sealed class DictationController(
                 injector.Inject(text);
                 var words = StatsData.CountWords(text);
                 var app = AppNameProvider;
-                stats.Record(words, seconds, app);
-                if (settings.HistoryEnabled)
-                    history.Record(text, words, app, transcribeSeconds, settings.ModelType.ToString());
-                Transcribed?.Invoke(text);
+                void Commit()
+                {
+                    stats.Record(words, seconds, app);
+                    if (settings.HistoryEnabled)
+                        history.Record(text, words, app, transcribeSeconds, settings.ModelType.ToString());
+                    Transcribed?.Invoke(text);
+                }
+                if (UiPost is null) Commit();
+                else UiPost(Commit);
             }
 
             State = DictationState.Idle;

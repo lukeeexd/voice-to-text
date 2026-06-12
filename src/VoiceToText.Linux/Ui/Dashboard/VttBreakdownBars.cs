@@ -48,7 +48,12 @@ internal sealed class VttBreakdownBars : Control
             context.FillRectangle(ThemeTokens.CardBorderBrush, new Rect(x, ty, trackW, trackH));
             double fillW = Math.Round(trackW * Math.Clamp(a.Fraction, 0, 1));
             if (fillW > 0)
-                context.FillRectangle(ThemeTokens.TrackGradient, new Rect(x, ty, fillW, trackH));
+            {
+                // GDI+ maps the gradient across the FULL track width; clip the fill
+                // to match (partial fills show only the left part of the ramp).
+                using (context.PushClip(new Rect(x, ty, fillW, trackH)))
+                    context.FillRectangle(ThemeTokens.TrackGradient, new Rect(x, ty, trackW, trackH));
+            }
         }
     }
 }

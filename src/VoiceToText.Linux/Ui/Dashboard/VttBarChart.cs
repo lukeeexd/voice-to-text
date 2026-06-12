@@ -47,7 +47,10 @@ internal sealed class VttBarChart : Control
             if (words > 0 && h < 2) h = 2; // keep tiny non-zero days visible
             if (h <= 0) continue;
             double x = plot.X + i * slot + (slot - barW) / 2;
-            context.FillRectangle(ThemeTokens.BarGradient, new Rect(x, plot.Bottom - h, barW, h));
+            // GDI+ maps the gradient across the WHOLE plot height (short bars stay
+            // dark); clip the bar and fill a plot-height rect to match.
+            using (context.PushClip(new Rect(x, plot.Bottom - h, barW, h)))
+                context.FillRectangle(ThemeTokens.BarGradient, new Rect(x, plot.Y, barW, plot.Height));
         }
 
         var axis = ThemeTokens.TextMutedBrush;

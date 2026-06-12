@@ -66,8 +66,8 @@ internal static class ThemeTokens
     public static readonly Typeface Regular = new(Family);
     public static readonly Typeface Bold = new(Family, weight: FontWeight.Bold);
 
-    // Theme.cs sizes: HeroNumber 30b, TileNumber 18b, Heading 14b, Brand 11.5b,
-    // Empty 11, NavItem 10.5, LabelBold 10b, Caption 8.5.
-    public const double HeroNumberSize = 30, TileNumberSize = 18, HeadingSize = 14,
-        BrandSize = 11.5, EmptySize = 11, NavItemSize = 10.5, LabelBoldSize = 10, CaptionSize = 8.5;
+    // Theme.cs sizes are GDI+ POINTS; Avalonia takes DIPs — multiply by 96/72 so the
+    // rendered text matches Windows pixel-for-pixel (30pt→40, 18→24, 14→18.67, …).
+    public const double HeroNumberSize = 40, TileNumberSize = 24, HeadingSize = 18.67,
+        BrandSize = 15.33, EmptySize = 14.67, NavItemSize = 14, LabelBoldSize = 13.33, CaptionSize = 11.33;
 }

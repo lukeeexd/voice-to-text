@@ -28,13 +28,18 @@ internal sealed class LinuxDashboardPage : Canvas
         Foreground = ThemeTokens.TextSecondaryBrush,
         FontSize = ThemeTokens.CaptionSize,
     };
-    private readonly TextBlock _empty = new()
+    // The host gets the full page bounds; the TextBlock centers inside it (giving the
+    // TextBlock the bounds directly would anchor the text top-left).
+    private readonly Border _empty = new()
     {
-        Text = "No dictations yet — press your hotkey and start talking.",
-        Foreground = ThemeTokens.TextSecondaryBrush,
-        FontSize = ThemeTokens.EmptySize,
-        HorizontalAlignment = HorizontalAlignment.Center,
-        VerticalAlignment = VerticalAlignment.Center,
+        Child = new TextBlock
+        {
+            Text = "No dictations yet — press your hotkey and start talking.",
+            Foreground = ThemeTokens.TextSecondaryBrush,
+            FontSize = ThemeTokens.EmptySize,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        },
         IsVisible = false,
     };
 

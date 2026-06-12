@@ -122,6 +122,13 @@ public sealed class AppServices : IDisposable
             Controller.AppNameProvider = X11FocusTracker.GetFocusedAppName() ?? "Desktop";
     }
 
+    /// <summary>UI-initiated toggle (tray menu): resolves attribution like the hotkey/IPC paths.</summary>
+    public Task ToggleFromUi()
+    {
+        if (Controller.State == DictationState.Idle) ResolveAppName();
+        return Controller.ToggleAsync();
+    }
+
     private string RaiseOpenSettings()
     {
         OpenSettingsRequested?.Invoke();

@@ -588,7 +588,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         string shim;
         try
         {
-            shim = _updates.WriteRelauncherShim();
+            shim = WindowsRelauncher.WriteShim();
         }
         catch (Exception ex)
         {

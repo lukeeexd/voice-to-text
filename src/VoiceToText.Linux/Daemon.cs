@@ -1,71 +1,40 @@
-using VoiceToText.App;
+using Avalonia;
+using Avalonia.Controls;
 using VoiceToText.Diagnostics;
-using VoiceToText.History;
-using VoiceToText.Injection;
 using VoiceToText.Linux.Platform;
-using VoiceToText.Settings;
-using VoiceToText.Stats;
-using VoiceToText.Stt;
+using VoiceToText.Linux.Ui;
 
 namespace VoiceToText.Linux;
 
-/// <summary>Phase-2a injector: the transcript goes to stdout (and history/stats).
-/// Clipboard + paste injection arrive with the GUI in phase 2b.</summary>
-internal sealed class ConsoleInjector : ITextInjector
-{
-    public void Inject(string text) => Console.WriteLine($"TRANSCRIPT: {text}");
-}
-
 /// <summary>
-/// The phase-2a daemon: engine + IPC, no GUI yet. Dictation is triggered by running
-/// `voicetotext --toggle` (which any desktop's keyboard-shortcut settings can bind).
+/// The dictation daemon: engine + IPC + tray-resident Avalonia UI. Dictation is
+/// triggered by the global hotkey (X11 sessions) or by `voicetotext --toggle`
+/// (any desktop's keyboard-shortcut settings can bind it).
 /// </summary>
 internal static class Daemon
 {
     public static int Run(string[] args)
     {
-        var settings = AppSettings.Load();
-        var stats = new StatsService();
-        var history = new HistoryService();
-        var stt = new WhisperSttEngine(settings.ModelType, settings.Language);
-        var controller = new DictationController(
-            new PulseAudioSource(), stt, new ConsoleInjector(), new PulseCuePlayer(),
-            settings, stats, history);
-        controller.StatusChanged += (state, msg) => Console.WriteLine($"[{state}] {msg}");
-
-        using var ipc = new IpcServer(cmd => cmd switch
-        {
-            "toggle" => Toggle(controller),
-            "status" => controller.State.ToString(),
-            "ping" => "pong",
-            _ => $"unknown command: {cmd}",
-        });
+        using var services = new AppServices();
+        using var ipc = new IpcServer(services.HandleCommand);
         if (!ipc.Start())
         {
-            Console.Error.WriteLine("voicetotext is already running. Use --toggle to dictate.");
+            Console.Error.WriteLine("voicetotext is already running. Use --toggle to dictate or --settings to configure.");
             return 2;
         }
 
-        Log.Info($"voicetotext daemon started (model {settings.ModelType}).");
-        Console.WriteLine("voicetotext daemon running. Trigger dictation with: voicetotext --toggle");
-        _ = stt.LoadAsync(); // background model download/load + warm-up, like the Windows head
+        Log.Info($"voicetotext daemon started (model {services.Settings.ModelType}, hotkey tier {services.HotkeyTier}).");
+        Console.WriteLine("voicetotext daemon running. Trigger dictation with the hotkey or: voicetotext --toggle");
+        services.Controller.Transcribed += t => Console.WriteLine($"TRANSCRIPT: {t}");
+        services.WarmUp();
 
-        using var quit = new ManualResetEventSlim(false);
-        Console.CancelKeyPress += (_, e) =>
-        {
-            e.Cancel = true;
-            quit.Set();
-        };
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => quit.Set();
-        quit.Wait();
+        VttApp.Services = services;
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
+
         Log.Info("voicetotext daemon stopping.");
         return 0;
     }
 
-    private static string Toggle(DictationController controller)
-    {
-        var wasIdle = controller.State == DictationState.Idle;
-        _ = controller.ToggleAsync();
-        return wasIdle ? "starting" : "stopping";
-    }
+    private static AppBuilder BuildAvaloniaApp()
+        => AppBuilder.Configure<VttApp>().UsePlatformDetect().LogToTrace();
 }

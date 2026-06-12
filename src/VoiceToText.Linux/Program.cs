@@ -32,8 +32,10 @@ internal static class Program
                 case "--historytest": return RunFragment(Out(args, "historytest"), "HISTORY", CoreSelfTest.HistoryStoreChecks);
                 case "--textrulestest": return RunFragment(Out(args, "textrulestest"), "TEXTRULES", CoreSelfTest.TextRulesChecks);
                 case "--audiotest": return PulseSelfTest.Run(Out(args, "audiotest"));
+                case "--uitest": return Ui.UiSelfTest.Run(Out(args, "uitest"));
                 case "--toggle": return IpcClient.Send("toggle");
                 case "--status": return IpcClient.Send("status");
+                case "--settings": return IpcClient.Send("settings");
                 case "--version":
                     Console.WriteLine(typeof(Program).Assembly.GetName().Version?.ToString(3));
                     return 0;

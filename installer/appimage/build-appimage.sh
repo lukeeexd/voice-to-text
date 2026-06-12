@@ -34,12 +34,26 @@ done
 # host per AppImage convention. (The daemon also degrades headless if the GUI
 # can't start at all.)
 sudo apt-get install -y --no-install-recommends \
-  libice6 libsm6 libxext6 libxrender1 libxrandr2 libxi6 libxcursor1 libxfixes3 >/dev/null
+  libice6 libsm6 libxext6 libxrender1 libxrandr2 libxi6 libxcursor1 libxfixes3 libgomp1 >/dev/null
 for lib in libICE.so.6 libSM.so.6 libXext.so.6 libXrender.so.1 \
            libXrandr.so.2 libXi.so.6 libXcursor.so.1 libXfixes.so.3; do
   cp -P /usr/lib/x86_64-linux-gnu/"$lib"* "$APPDIR/usr/bin/" 2>/dev/null || true
 done
-ln -s usr/bin/voicetotext "$APPDIR/AppRun"
+
+# libgomp: whisper.cpp's CPU runtime links OpenMP, which minimal systems lack
+# (found by phase-4 WSL validation: dlopen fails with ENOENT and dictation dies).
+cp -P /usr/lib/x86_64-linux-gnu/libgomp.so.1* "$APPDIR/usr/bin/"
+
+# AppRun is a wrapper (not a symlink) so the bundled libraries also satisfy
+# TRANSITIVE DT_NEEDED deps (e.g. ggml-cpu -> libgomp.so.1): the dynamic linker
+# only finds those via LD_LIBRARY_PATH, never via .NET's probing paths.
+cat > "$APPDIR/AppRun" <<'EOF'
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "$0")")"
+export LD_LIBRARY_PATH="$HERE/usr/bin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$HERE/usr/bin/voicetotext" "$@"
+EOF
+chmod +x "$APPDIR/AppRun"
 cp "$SCRIPT_DIR/voicetotext.desktop" "$APPDIR/"
 cp "$SCRIPT_DIR/voicetotext.png" "$APPDIR/"
 

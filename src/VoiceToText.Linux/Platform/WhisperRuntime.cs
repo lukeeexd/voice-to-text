@@ -52,24 +52,26 @@ public static class WhisperRuntime
     private static readonly List<IntPtr> PinnedLibs = [];
 
     /// <summary>
-    /// Load the runtime's native chain ourselves and KEEP the handles. Whisper.net's
-    /// loader load-checks-unloads libraries; reloading libggml-base re-runs its static
-    /// initializer, whose set_terminate guard then sees its own stale handler and
-    /// abort()s the process (observed on stock Ubuntu 24.04/26.04 with 1.9.0/1.9.1).
-    /// With our references held, any later dlclose only decrements a refcount and the
-    /// initializer can never run twice.
+    /// Pin ONLY libggml-base and KEEP the handle. Whisper.net's loader load-checks-
+    /// unloads libraries; reloading libggml-base re-runs its static initializer,
+    /// whose set_terminate guard then sees its own stale handler and abort()s the
+    /// process (observed on stock Ubuntu 24.04/26.04 with 1.9.0/1.9.1). With our
+    /// reference held, any later dlclose only decrements a refcount and the
+    /// initializer can never run twice. The OTHER libraries are left for Whisper.net
+    /// to load itself — pre-pinning the whole chain confuses its load bookkeeping.
     /// </summary>
     private static void Preload(string relativeDir)
     {
-        var dir = Path.Combine(AppContext.BaseDirectory, relativeDir);
-        foreach (var name in (string[])
-                 ["libggml-base-whisper.so", "libggml-cpu-whisper.so",
-                  "libggml-vulkan-whisper.so", "libggml-whisper.so", "libwhisper.so"])
-        {
-            var path = Path.Combine(dir, name);
-            if (File.Exists(path) && NativeLibrary.TryLoad(path, out var handle))
-                PinnedLibs.Add(handle);
-        }
+        // An app-dir libgomp (bundled for hosts without OpenMP) must enter the link
+        // map BEFORE ggml-cpu's DT_NEEDED resolution asks for it — transitive deps
+        // ignore .NET's probing paths.
+        var gomp = Path.Combine(AppContext.BaseDirectory, "libgomp.so.1");
+        if (File.Exists(gomp) && NativeLibrary.TryLoad(gomp, out var gompHandle))
+            PinnedLibs.Add(gompHandle);
+
+        var path = Path.Combine(AppContext.BaseDirectory, relativeDir, "libggml-base-whisper.so");
+        if (File.Exists(path) && NativeLibrary.TryLoad(path, out var handle))
+            PinnedLibs.Add(handle);
     }
 
     /// <summary>Runs in the CHILD (--vulkanprobe): dlopen the ggml-vulkan library; an

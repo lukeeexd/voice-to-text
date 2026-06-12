@@ -2,5 +2,6 @@
   <Folder Name="/src/">
     <Project Path="src/VoiceToText/VoiceToText.csproj" />
     <Project Path="src/VoiceToText.Core/VoiceToText.Core.csproj" />
+    <Project Path="src/VoiceToText.Linux/VoiceToText.Linux.csproj" />
   </Folder>
 </Solution>

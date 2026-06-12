@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>VoiceToText.Linux</RootNamespace>
+    <AssemblyName>voicetotext</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VoiceToText.Core\VoiceToText.Core.csproj" />
+  </ItemGroup>
+
+  <!--
+    A linux-x64 publish only needs the Linux natives; strip the rest (mirror of the
+    Windows head's StripForeignNativeRuntimes, inverted).
+  -->
+  <Target Name="StripForeignNativeRuntimesLinux" AfterTargets="Publish">
+    <ItemGroup>
+      <_ForeignRidL Include="win-x64;win-x86;win-arm64;win-arm;osx;osx-x64;osx-arm64;macos;macos-x64;macos-arm64;linux-arm;linux-arm64" />
+      <_ForeignRuntimeDirL Include="@(_ForeignRidL->'$(PublishDir)runtimes\%(Identity)')" />
+      <_ForeignRuntimeDirL Include="@(_ForeignRidL->'$(PublishDir)runtimes\vulkan\%(Identity)')" />
+    </ItemGroup>
+    <RemoveDir Directories="@(_ForeignRuntimeDirL)" />
+    <Message Importance="high" Text="Stripped foreign native runtimes from $(PublishDir)runtimes." />
+  </Target>
+
+</Project>

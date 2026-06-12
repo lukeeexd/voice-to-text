@@ -18,6 +18,7 @@ internal static class Program
         // Wire HotkeyDefinition.Describe() to WinForms key names before anything
         // (self-tests included) renders a hotkey label.
         Hotkeys.WinHotkeys.RegisterKeyNames();
+        Diagnostics.DiagnosticsInfo.GpuNameProvider = Diagnostics.GpuInfo.PrimaryGpuName;
 
         if (args.Length > 0 && args[0].Equals("--selftest", StringComparison.OrdinalIgnoreCase))
         {

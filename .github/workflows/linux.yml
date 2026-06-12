@@ -40,7 +40,7 @@ jobs:
         working-directory: publish-linux
         run: |
           set -e
-          for f in --vadtest --statstest --historytest --textrulestest --logtest --controllertest --uitest --updatecheck; do
+          for f in --vadtest --statstest --dashtest --abouttest --historytest --textrulestest --logtest --controllertest --uitest --updatecheck; do
             echo "=== $f ==="
             ./voicetotext $f
           done

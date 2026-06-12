@@ -28,6 +28,8 @@ internal static class Program
                         args.Length > 3 ? args[3] : null);
                 case "--vadtest": return CoreSelfTest.RunVadTest(Out(args, "vadtest"));
                 case "--statstest": return CoreSelfTest.RunStatsTest(Out(args, "statstest"));
+                case "--dashtest": return CoreSelfTest.RunDashTest(Out(args, "dashtest"));
+                case "--abouttest": return CoreSelfTest.RunAboutTest(Out(args, "abouttest"));
                 case "--logtest": return CoreSelfTest.RunLogTest(Out(args, "logtest"));
                 case "--controllertest": return CoreSelfTest.RunControllerTest(Out(args, "controllertest"));
                 case "--updatecheck": return CoreSelfTest.RunUpdateCheck("updatecheck-output.txt", args.Length > 1 ? args[1] : null);

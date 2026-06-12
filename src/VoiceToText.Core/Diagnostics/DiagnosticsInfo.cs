@@ -55,12 +55,18 @@ public sealed class DiagnosticsInfo
         return $"{mb:0} MB";
     }
 
+    /// <summary>Platform hook returning the primary GPU's display name. Set at startup
+    /// by heads that can probe it (Windows: EnumDisplayDevices); default "Unknown".</summary>
+    public static Func<string>? GpuNameProvider { get; set; }
+
     /// <summary>Gather the live values for the running app.</summary>
     public static DiagnosticsInfo Current(AppSettings settings)
     {
-        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "?";
+        // Entry assembly: the HEAD exe carries the shared Version.props version.
+        var version = (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+            .GetName().Version?.ToString(3) ?? "?";
         var runtime = RuntimeProbe.LoadedRuntime();
-        var gpu = GpuInfo.PrimaryGpuName();
+        var gpu = GpuNameProvider?.Invoke() ?? "Unknown";
         var modelType = settings.ModelType;
         var model = ModelOption.All.FirstOrDefault(m => m.Type == modelType)?.ToString() ?? modelType.ToString();
         var realPath = ModelManager.GetModelPath(modelType);

@@ -1,0 +1,70 @@
+name: linux
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  battery:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build (Release)
+        run: dotnet build src/VoiceToText.Linux/VoiceToText.Linux.csproj -c Release --no-incremental
+
+      - name: Publish linux-x64
+        run: dotnet publish src/VoiceToText.Linux/VoiceToText.Linux.csproj -c Release -r linux-x64 --self-contained -o publish-linux
+
+      - name: Start PulseAudio with a virtual source
+        run: |
+          sudo apt-get update && sudo apt-get install -y pulseaudio pulseaudio-utils
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=vmic
+          pactl set-default-source vmic.monitor
+          pactl info | grep -E "Server Name|Default Source"
+
+      - name: Core battery
+        working-directory: publish-linux
+        run: |
+          set -e
+          for f in --vadtest --statstest --historytest --textrulestest --logtest --controllertest --updatecheck; do
+            echo "=== $f ==="
+            ./voicetotext $f
+          done
+
+      - name: Audio P/Invoke roundtrip (must PASS, not skip)
+        working-directory: publish-linux
+        run: |
+          ./voicetotext --audiotest
+          grep -q "PASS" audiotest-output.txt
+
+      - name: Cache Whisper tiny model
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/VoiceToText/models
+          key: whisper-tiny-v1
+
+      - name: Full STT selftest (CPU, tiny model)
+        working-directory: publish-linux
+        run: |
+          curl -sL -o jfk.wav https://github.com/ggml-org/whisper.cpp/raw/master/samples/jfk.wav
+          ./voicetotext --selftest jfk.wav selftest-output.txt Tiny
+          cat selftest-output.txt
+          grep -qi "ask not what your country" selftest-output.txt
+
+      - name: Upload outputs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-outputs-${{ matrix.os }}
+          path: publish-linux/*-output.txt

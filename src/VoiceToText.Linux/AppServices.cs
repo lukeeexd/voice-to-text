@@ -93,13 +93,16 @@ public sealed class AppServices : IDisposable
 
     private string Toggle()
     {
-        // Desktop keybindings re-fire on keyboard auto-repeat when the chord is held
-        // a beat (~500 ms initial delay on GNOME), and the repeat's second --toggle
-        // would instantly stop the recording the press just started. Debounce.
+        // Desktop keybindings re-fire CONTINUOUSLY on keyboard auto-repeat while the
+        // chord is held (GNOME: ~every 30 ms after a ~500 ms delay). A fixed debounce
+        // only postpones the spurious stop, so the window SLIDES: every request —
+        // acted on or not — extends the quiet period, collapsing the entire held-key
+        // stream into one action. The next genuine press (after release) acts again.
         var now = DateTime.UtcNow;
-        if ((now - _lastToggleUtc).TotalMilliseconds < 700)
-            return "ignored (debounce)";
+        var sinceLast = (now - _lastToggleUtc).TotalMilliseconds;
         _lastToggleUtc = now;
+        if (sinceLast < 700)
+            return "ignored (debounce)";
 
         var wasIdle = Controller.State == DictationState.Idle;
         _ = Controller.ToggleAsync();

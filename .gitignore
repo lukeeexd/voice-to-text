@@ -26,3 +26,7 @@ selftest-output.txt
 
 # Headless diagnostic outputs
 *-output.txt
+
+# Local Linux publish output (phase-4 WSL test loop)
+publish-linux-test/
+publish/

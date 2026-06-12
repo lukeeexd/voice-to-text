@@ -36,7 +36,7 @@ public sealed class AppServices : IDisposable
         Settings = AppSettings.Load();
         Stats = new StatsService();
         History = new HistoryService();
-        WhisperRuntime.ConfigureForHost(Settings.ForceCpu);
+        WhisperRuntime.ConfigureForHost(Settings.UseGpuExperimental);
         _stt = new WhisperSttEngine(Settings.ModelType, Settings.Language);
         Injector = new LinuxTextInjector(ClipboardHelper.SetTextAsync, Settings);
         Controller = new DictationController(

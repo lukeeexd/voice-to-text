@@ -9,9 +9,32 @@ namespace VoiceToText;
 public static class AppPaths
 {
     public static string ConfigDir => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "VoiceToText");
+        Resolve(Environment.SpecialFolder.ApplicationData, "XDG_CONFIG_HOME", ".config"),
+        "VoiceToText");
 
     public static string DataDir => OperatingSystem.IsWindows()
         ? ConfigDir
-        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VoiceToText");
+        : Path.Combine(
+            Resolve(Environment.SpecialFolder.LocalApplicationData, "XDG_DATA_HOME", ".local/share"),
+            "VoiceToText");
+
+    /// <summary>
+    /// GetFolderPath can return "" in stripped-down environments (observed on Linux
+    /// under WSL); an empty base would scatter our files relative to the CWD. Fall
+    /// back through the XDG variable, then $HOME, and finally the temp dir — always
+    /// an absolute path.
+    /// </summary>
+    private static string Resolve(Environment.SpecialFolder folder, string xdgVar, string homeSuffix)
+    {
+        var path = Environment.GetFolderPath(folder);
+        if (!string.IsNullOrEmpty(path))
+            return path;
+        var xdg = Environment.GetEnvironmentVariable(xdgVar);
+        if (!string.IsNullOrEmpty(xdg))
+            return xdg;
+        var home = Environment.GetEnvironmentVariable("HOME");
+        if (!string.IsNullOrEmpty(home))
+            return Path.Combine(home, homeSuffix);
+        return Path.GetTempPath();
+    }
 }

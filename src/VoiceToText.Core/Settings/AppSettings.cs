@@ -76,9 +76,11 @@ public sealed class AppSettings
     /// paste-injection permission persists across restarts. Unused on Windows.</summary>
     public string? PortalRestoreToken { get; set; }
 
-    /// <summary>Skip GPU (Vulkan) inference and force the CPU Whisper runtime.
-    /// Guards against broken GPU drivers; surfaced in the Linux head's settings.</summary>
-    public bool ForceCpu { get; set; } = false;
+    /// <summary>Linux only: opt INTO GPU (Vulkan) inference. Off by default because
+    /// Whisper.net 1.9's Vulkan→CPU fallback dlopens ggml-base twice and aborts the
+    /// process on hosts where Vulkan is present but broken; with the opt-in we pin a
+    /// single runtime (probed in a child process first) and the bug cannot trigger.</summary>
+    public bool UseGpuExperimental { get; set; } = false;
 
     [JsonIgnore]
     public HotkeyDefinition Hotkey

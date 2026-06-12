@@ -20,6 +20,8 @@ internal static class Program
             switch (args[0].ToLowerInvariant())
             {
                 case "--selftest":
+                    // Same runtime selection as the daemon, so CI proves the path users run.
+                    WhisperRuntime.ConfigureForHost(useGpu: false);
                     return CoreSelfTest.Run(
                         args.Length > 1 ? args[1] : "jfk.wav",
                         args.Length > 2 ? args[2] : "selftest-output.txt",
@@ -32,6 +34,7 @@ internal static class Program
                 case "--historytest": return RunFragment(Out(args, "historytest"), "HISTORY", CoreSelfTest.HistoryStoreChecks);
                 case "--textrulestest": return RunFragment(Out(args, "textrulestest"), "TEXTRULES", CoreSelfTest.TextRulesChecks);
                 case "--audiotest": return PulseSelfTest.Run(Out(args, "audiotest"));
+                case "--vulkanprobe": return WhisperRuntime.ProbeVulkanInChild();
                 case "--uitest": return Ui.UiSelfTest.Run(Out(args, "uitest"));
                 case "--toggle": return IpcClient.Send("toggle");
                 case "--status": return IpcClient.Send("status");

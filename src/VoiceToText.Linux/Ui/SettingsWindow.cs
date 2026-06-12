@@ -135,14 +135,14 @@ public sealed class SettingsWindow : Window
             if (autostart.IsChecked == true) XdgAutostart.Enable();
             else XdgAutostart.Disable();
         };
-        var forceCpu = new CheckBox { Content = "Force CPU transcription (skip the GPU) — applies after a restart", IsChecked = settings.ForceCpu };
-        forceCpu.IsCheckedChanged += (_, _) =>
+        var useGpu = new CheckBox { Content = "Use the GPU for transcription (Vulkan, experimental) — applies after a restart", IsChecked = settings.UseGpuExperimental };
+        useGpu.IsCheckedChanged += (_, _) =>
         {
-            settings.ForceCpu = forceCpu.IsChecked == true;
+            settings.UseGpuExperimental = useGpu.IsChecked == true;
             settings.Save();
         };
         panel.Children.Add(autostart);
-        panel.Children.Add(forceCpu);
+        panel.Children.Add(useGpu);
 
         // --- Updates ---
         panel.Children.Add(Header("Updates"));

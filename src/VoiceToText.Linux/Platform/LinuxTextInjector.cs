@@ -27,7 +27,9 @@ public sealed class LinuxTextInjector(Func<string, Task> setClipboard, AppSettin
     {
         try
         {
-            setClipboard(text).GetAwaiter().GetResult();
+            // Via the pool so a (hypothetical) synchronous caller on the UI thread
+            // can never deadlock against the clipboard's UI-thread marshaling.
+            Task.Run(() => setClipboard(text)).GetAwaiter().GetResult();
         }
         catch (Exception ex)
         {

@@ -6,7 +6,8 @@ public enum HotkeyTier { X11Grab, IpcBinding }
 public static class SessionInfo
 {
     public static bool IsWayland =>
-        string.Equals(Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"), "wayland", StringComparison.OrdinalIgnoreCase);
+        string.Equals(Environment.GetEnvironmentVariable("XDG_SESSION_TYPE"), "wayland", StringComparison.OrdinalIgnoreCase)
+        || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")); // session type can be unset under systemd-user autostart
 
     public static bool IsGnome =>
         (Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "")

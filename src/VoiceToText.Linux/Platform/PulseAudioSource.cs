@@ -61,14 +61,17 @@ public sealed class PulseAudioSource : IAudioSource
         _silenceDetector = autoStop ? new SilenceDetector(autoStopSilenceSeconds) : null;
         _silenceSignaled = false;
         _stopRequested = false;
-        _stopped = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stopped = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _stopped = stopped;
         IsRecording = true;
 
-        _thread = new Thread(() => ReadLoop(stream)) { IsBackground = true, Name = "pulse-capture" };
+        // The TCS is passed by value: a stalled read thread that outlives a stop
+        // timeout must complete ITS session's TCS, never a later session's.
+        _thread = new Thread(() => ReadLoop(stream, stopped)) { IsBackground = true, Name = "pulse-capture" };
         _thread.Start();
     }
 
-    private void ReadLoop(IntPtr stream)
+    private void ReadLoop(IntPtr stream, TaskCompletionSource<bool> stopped)
     {
         var buf = new float[ChunkSamples];
         var handle = GCHandle.Alloc(buf, GCHandleType.Pinned);
@@ -108,7 +111,7 @@ public sealed class PulseAudioSource : IAudioSource
         {
             handle.Free();
             PulseNative.pa_simple_free(stream);
-            _stopped?.TrySetResult(true);
+            stopped.TrySetResult(true);
         }
     }
 

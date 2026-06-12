@@ -17,7 +17,7 @@ public static class XdgAutostart
             Type=Application
             Name=VoiceToText
             Comment=Voice dictation (start hidden in the tray)
-            Exec={GnomeShortcuts.ExecutablePath}
+            Exec="{GnomeShortcuts.ExecutablePath}"
             X-GNOME-Autostart-enabled=true
             """ + "\n");
     }

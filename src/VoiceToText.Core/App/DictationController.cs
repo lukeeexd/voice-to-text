@@ -27,6 +27,7 @@ public sealed class DictationController(
     StatsService stats,
     HistoryService history)
 {
+    private readonly object _gate = new(); // serializes the Idle→Recording transition
     private int _busy; // 1 while transcribing (toggle ignored), else 0
 
     public DictationState State { get; private set; } = DictationState.Idle;
@@ -46,17 +47,28 @@ public sealed class DictationController(
         if (Interlocked.CompareExchange(ref _busy, 0, 0) == 1)
             return; // mid-transcription: ignore, exactly like the Windows head
 
-        if (State == DictationState.Idle)
-            Start();
-        else
+        // The hotkey thread, the IPC thread pool, and the tray UI can all toggle
+        // concurrently; the gate makes Idle→Recording atomic so a double-tap can
+        // never double-start the audio source.
+        var started = false;
+        lock (_gate)
+        {
+            if (State == DictationState.Idle)
+            {
+                StartLocked();
+                started = true;
+            }
+        }
+        if (!started)
             await StopAndTranscribeAsync().ConfigureAwait(false);
     }
 
-    private void Start()
+    private void StartLocked()
     {
         try
         {
             audio.SilenceDetected += OnSilence;
+            audio.RecordingFailed += OnRecordingFailed;
             audio.Start(settings.InputDeviceId, settings.AutoStopEnabled, settings.AutoStopSilenceSeconds);
             State = DictationState.Recording;
             if (settings.SoundCuesEnabled && cues is not null)
@@ -69,6 +81,7 @@ public sealed class DictationController(
         catch (Exception ex)
         {
             audio.SilenceDetected -= OnSilence;
+            audio.RecordingFailed -= OnRecordingFailed;
             State = DictationState.Idle;
             Log.Error("Could not start recording", ex);
             StatusChanged?.Invoke(State, $"Could not start recording: {ex.Message}");
@@ -77,6 +90,15 @@ public sealed class DictationController(
 
     private void OnSilence() => _ = StopAndTranscribeAsync();
 
+    private void OnRecordingFailed(Exception ex)
+    {
+        // Device lost mid-dictation (mic unplugged, audio server restart): salvage
+        // what was captured and surface the error instead of recording into the void.
+        Log.Error("Recording failed mid-dictation", ex);
+        StatusChanged?.Invoke(State, $"Recording failed: {ex.Message}");
+        _ = StopAndTranscribeAsync();
+    }
+
     private async Task StopAndTranscribeAsync()
     {
         if (Interlocked.Exchange(ref _busy, 1) == 1)
@@ -84,6 +106,7 @@ public sealed class DictationController(
         try
         {
             audio.SilenceDetected -= OnSilence;
+            audio.RecordingFailed -= OnRecordingFailed;
             State = DictationState.Transcribing;
             if (settings.SoundCuesEnabled && cues is not null)
             {

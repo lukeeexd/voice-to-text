@@ -22,6 +22,7 @@ public sealed class IpcServer(Func<string, string> handleCommand) : IDisposable
     }
 
     private Socket? _listener;
+    private bool _owned; // only the instance that bound the socket may delete its file
 
     public bool Start()
     {
@@ -40,9 +41,20 @@ public sealed class IpcServer(Func<string, string> handleCommand) : IDisposable
             }
         }
 
-        _listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-        _listener.Bind(new UnixDomainSocketEndPoint(SocketPath));
-        _listener.Listen(4);
+        try
+        {
+            _listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            _listener.Bind(new UnixDomainSocketEndPoint(SocketPath));
+            _listener.Listen(4);
+        }
+        catch (SocketException)
+        {
+            // Lost a simultaneous-start race: someone else bound it first.
+            _listener?.Dispose();
+            _listener = null;
+            return false;
+        }
+        _owned = true;
         _ = AcceptLoopAsync(_listener);
         return true;
     }
@@ -72,6 +84,8 @@ public sealed class IpcServer(Func<string, string> handleCommand) : IDisposable
                     using var c = client;
                     var buf = new byte[256];
                     var n = await c.ReceiveAsync(buf).ConfigureAwait(false);
+                    if (n == 0)
+                        return; // a second instance's liveness probe, not a command
                     var cmd = Encoding.UTF8.GetString(buf, 0, n).Trim();
                     var reply = handleCommand(cmd);
                     await c.SendAsync(Encoding.UTF8.GetBytes(reply)).ConfigureAwait(false);
@@ -87,6 +101,11 @@ public sealed class IpcServer(Func<string, string> handleCommand) : IDisposable
     public void Dispose()
     {
         _listener?.Dispose();
-        try { File.Delete(SocketPath); } catch { /* best effort */ }
+        // A second instance must NOT unlink the live daemon's socket — that would
+        // kill the --toggle hotkey path and allow a third instance to double-start.
+        if (_owned)
+        {
+            try { File.Delete(SocketPath); } catch { /* best effort */ }
+        }
     }
 }

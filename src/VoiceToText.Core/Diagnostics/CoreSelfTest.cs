@@ -447,6 +447,23 @@ public static class CoreSelfTest
             c3.ToggleAsync().GetAwaiter().GetResult();
             Pass("start failure → idle", c3.State == App.DictationState.Idle, $"={c3.State}");
             Pass("start failure surfaced", lastStatus is not null && lastStatus.Contains("Could not start"), lastStatus ?? "null");
+
+            // Concurrency: the hotkey thread, IPC clients and the tray can all toggle at
+            // once. The fake throws on double-start (like WASAPI/pulse), so any unguarded
+            // Idle→Recording race shows up as a "Could not start" status.
+            var audio4 = new FakeAudioSource(new float[16_000]);
+            var c4 = new App.DictationController(audio4, new FakeStt("x"), injector, null, settings, stats, history);
+            var raceErrors = 0;
+            c4.StatusChanged += (_, msg) =>
+            {
+                if (msg.StartsWith("Could not start")) Interlocked.Increment(ref raceErrors);
+            };
+            Parallel.For(0, 32, _ => c4.ToggleAsync().GetAwaiter().GetResult());
+            if (c4.State == App.DictationState.Recording)
+                c4.ToggleAsync().GetAwaiter().GetResult(); // drain to idle
+            Pass("parallel toggles never double-start", raceErrors == 0, $"errors={raceErrors}");
+            Pass("parallel toggles leave a balanced source",
+                audio4.StartCount - audio4.StopCount is 0, $"starts={audio4.StartCount}, stops={audio4.StopCount}");
         }
         catch (Exception ex)
         {
@@ -466,21 +483,30 @@ public static class CoreSelfTest
 
     private sealed class FakeAudioSource(float[] samples) : Audio.IAudioSource
     {
-        public bool Started;
-        public bool Stopped;
+        private int _startCount;
+        private int _stopCount;
+        public bool Started => _startCount > 0;
+        public bool Stopped => _stopCount > 0;
+        public int StartCount => _startCount;
+        public int StopCount => _stopCount;
         public bool IsRecording { get; private set; }
         public event Action? SilenceDetected { add { } remove { } }
         public event Action<float>? LevelChanged { add { } remove { } }
         public event Action<Exception>? RecordingFailed { add { } remove { } }
         public void Start(string? deviceId, bool autoStop, double autoStopSilenceSeconds)
         {
-            Started = true;
+            if (IsRecording)
+                throw new InvalidOperationException("Already recording."); // mirror the real sources
+            Interlocked.Increment(ref _startCount);
             IsRecording = true;
         }
         public Task<float[]> StopAndGetSamplesAsync()
         {
-            Stopped = true;
-            IsRecording = false;
+            if (IsRecording)
+            {
+                Interlocked.Increment(ref _stopCount);
+                IsRecording = false;
+            }
             return Task.FromResult(samples);
         }
     }

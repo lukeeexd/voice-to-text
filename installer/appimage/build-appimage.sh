@@ -27,6 +27,18 @@ for lib in /usr/lib/x86_64-linux-gnu/libicuuc.so.* \
            /usr/lib/x86_64-linux-gnu/libicudata.so.*; do
   cp -P "$lib" "$APPDIR/usr/bin/"
 done
+
+# Bundle the small X11 client libs Avalonia dlopens: desktop distros all have
+# them, but near-minimal systems (fresh WSL, containers) miss e.g. libICE and
+# the daemon should still bring up its GUI there. libX11/fontconfig stay on the
+# host per AppImage convention. (The daemon also degrades headless if the GUI
+# can't start at all.)
+sudo apt-get install -y --no-install-recommends \
+  libice6 libsm6 libxext6 libxrender1 libxrandr2 libxi6 libxcursor1 libxfixes3 >/dev/null
+for lib in libICE.so.6 libSM.so.6 libXext.so.6 libXrender.so.1 \
+           libXrandr.so.2 libXi.so.6 libXcursor.so.1 libXfixes.so.3; do
+  cp -P /usr/lib/x86_64-linux-gnu/"$lib"* "$APPDIR/usr/bin/" 2>/dev/null || true
+done
 ln -s usr/bin/voicetotext "$APPDIR/AppRun"
 cp "$SCRIPT_DIR/voicetotext.desktop" "$APPDIR/"
 cp "$SCRIPT_DIR/voicetotext.png" "$APPDIR/"

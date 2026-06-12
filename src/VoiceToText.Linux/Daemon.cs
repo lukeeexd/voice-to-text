@@ -29,7 +29,27 @@ internal static class Daemon
         services.WarmUp();
 
         VttApp.Services = services;
-        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
+        }
+        catch (Exception ex)
+        {
+            // No usable display stack (SSH session, minimal/broken desktop): dictation
+            // must keep working. Stay alive headless — IPC --toggle still drives the
+            // engine, and the clipboard helper falls back to wl-copy/xclip on its own.
+            Log.Error("GUI unavailable; continuing headless (IPC --toggle still works)", ex);
+            Console.Error.WriteLine($"GUI unavailable ({ex.Message}); running headless. Use --toggle to dictate.");
+            services.StartHotkeys();
+            using var quit = new ManualResetEventSlim(false);
+            Console.CancelKeyPress += (_, e) =>
+            {
+                e.Cancel = true;
+                quit.Set();
+            };
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => quit.Set();
+            quit.Wait();
+        }
 
         Log.Info("voicetotext daemon stopping.");
         return 0;
